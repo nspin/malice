@@ -7,8 +7,8 @@ import Mal.Monad.Vertex
 
 import Data.Serialize
 
-vertexPut :: (MonadVertex b e m, Serialize a) => a -> m ()
+vertexPut :: (MonadVertex e m, Serialize a) => a -> m ()
 vertexPut = vertexPutPut . put
 
-vertexPutPut :: MonadVertex b e m => Put -> m ()
+vertexPutPut :: MonadVertex e m => Put -> m ()
 vertexPutPut = vertexSendBuilder . execPut

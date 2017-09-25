@@ -33,15 +33,15 @@ socks5Handler mitm (Connection client addr) = do
             , edgeOut = liftIO . sendAll client
             }
     case r of
-        Left err -> $(logInfo) $ "socks5 link error from " <> pack (show addr) <> ": " <> pack err
+        Left err -> $logInfo $ "socks5 link error from " <> pack (show addr) <> ": " <> pack err
         Right (saddr, server) -> do
-            let handle ex = $(logWarn) $
+            let handle ex = $logWarn $
                     "mitm from " <> pack (show addr) <> " threw exception: " <> pack (show (ex :: SomeException))
                 cleanup = liftIO $ close server
             mitm (TCPProxyCtx client server) `catch` handle `finally` cleanup
 
 
-link :: (MonadIO m, MonadCatch m, MonadVertex b String m) => m (SocksAddress, Socket)
+link :: (MonadIO m, MonadCatch m, MonadVertex String m) => m (SocksAddress, Socket)
 link = do
     SocksHello meths <- endpointGet
     when (not (SocksMethodNone `elem` meths)) $ do

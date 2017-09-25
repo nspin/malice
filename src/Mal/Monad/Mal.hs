@@ -1,7 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Mal.Monad.Mal
     ( MalT(..)
@@ -76,11 +78,13 @@ evalMalT' :: Monad m => MalT e m a -> Vertices m -> m (Either e a)
 evalMalT' m vs = evalMalT m vs $ Buffers B.empty B.empty
 
 
-class (MonadMal e mal, MonadVertex b e vert) => HoistVertex b e mal vert where
+instance Monad m => HoistEndpoint e (MalT e m) (EndpointT e m) where
+    hoistFrom = (fmap . fmap) (MalT . lift) hoistFrom
+
+class (MonadMal e mal, MonadVertex e vert) => HoistVertex e mal vert | mal -> vert where
     hoistFromTo :: Side -> Side -> vert a -> mal a
 
-
-instance Monad m => HoistVertex m e (MalT e m) (VertexT e m) where
+instance Monad m => HoistVertex e (MalT e m) (VertexT e m) where
     hoistFromTo sfrom sto vert = MalT . ReaderT $ \sps ->
         EveT . ReaderT $ \eps -> ExceptT $
             substate
@@ -91,28 +95,28 @@ instance Monad m => HoistVertex m e (MalT e m) (VertexT e m) where
                         (endpointFrom sfrom eps)))
 
 
-instance HoistVertex b e mal vert => HoistVertex b e (IdentityT mal) (IdentityT vert) where
+instance HoistVertex e mal vert => HoistVertex e (IdentityT mal) (IdentityT vert) where
     hoistFromTo sfrom sto = IdentityT . hoistFromTo sfrom sto . runIdentityT
 
-instance HoistVertex b e mal vert => HoistVertex b e (ListT mal) (ListT vert) where
+instance HoistVertex e mal vert => HoistVertex e (ListT mal) (ListT vert) where
     hoistFromTo sfrom sto = ListT . hoistFromTo sfrom sto . runListT
 
-instance HoistVertex b e mal vert => HoistVertex b e (MaybeT mal) (MaybeT vert) where
+instance HoistVertex e mal vert => HoistVertex e (MaybeT mal) (MaybeT vert) where
     hoistFromTo sfrom sto = MaybeT . hoistFromTo sfrom sto . runMaybeT
 
-instance HoistVertex b e mal vert => HoistVertex b e (ReaderT r mal) (ReaderT r vert) where
+instance HoistVertex e mal vert => HoistVertex e (ReaderT r mal) (ReaderT r vert) where
     hoistFromTo sfrom sto = ReaderT . fmap (hoistFromTo sfrom sto) . runReaderT
 
-instance HoistVertex b e mal vert => HoistVertex b e (LazyState.StateT s mal) (LazyState.StateT s vert) where
+instance HoistVertex e mal vert => HoistVertex e (LazyState.StateT s mal) (LazyState.StateT s vert) where
     hoistFromTo sfrom sto = LazyState.StateT . (.) (hoistFromTo sfrom sto) . LazyState.runStateT
 
-instance HoistVertex b e mal vert => HoistVertex b e (StrictState.StateT s mal) (StrictState.StateT s vert) where
+instance HoistVertex e mal vert => HoistVertex e (StrictState.StateT s mal) (StrictState.StateT s vert) where
     hoistFromTo sfrom sto = StrictState.StateT . (.) (hoistFromTo sfrom sto) . StrictState.runStateT
 
-instance (Monoid w, HoistVertex b e mal vert) => HoistVertex b e (LazyWriter.WriterT w mal) (LazyWriter.WriterT w vert) where
+instance (Monoid w, HoistVertex e mal vert) => HoistVertex e (LazyWriter.WriterT w mal) (LazyWriter.WriterT w vert) where
     hoistFromTo sfrom sto = LazyWriter.WriterT . hoistFromTo sfrom sto . LazyWriter.runWriterT
 
-instance (Monoid w, HoistVertex b e mal vert) => HoistVertex b e (StrictWriter.WriterT w mal) (StrictWriter.WriterT w vert) where
+instance (Monoid w, HoistVertex e mal vert) => HoistVertex e (StrictWriter.WriterT w mal) (StrictWriter.WriterT w vert) where
     hoistFromTo sfrom sto = StrictWriter.WriterT . hoistFromTo sfrom sto . StrictWriter.runWriterT
 
 

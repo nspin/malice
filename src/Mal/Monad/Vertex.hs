@@ -66,13 +66,11 @@ instance Monad m => MonadEndpoint e (VertexT e m) where
             (flip runReaderT send . getVertexT . f)
 
 
-class MonadEndpoint e m => MonadVertex b e m | m -> b, m -> e where
+class MonadEndpoint e m => MonadVertex e m | m -> e where
     vertexSend :: B.ByteString -> m ()
-    vertexLocal :: ((B.ByteString -> b ()) -> B.ByteString -> b ()) -> m a -> m a
 
-instance Monad m => MonadVertex m e (VertexT e m) where
+instance Monad m => MonadVertex e (VertexT e m) where
     vertexSend bs = VertexT ask >>= \send -> lift (send bs)
-    vertexLocal f loc = VertexT $ local f (getVertexT loc)
 
 
 data Vertex m = Vertex
@@ -97,13 +95,13 @@ evalVertexT' :: Monad m => VertexT e m a -> Vertex m -> m (Either e a)
 evalVertexT' vertex recv = evalVertexT vertex recv B.empty
 
 
-vertexSendBuilder :: MonadVertex b e m => Builder -> m ()
+vertexSendBuilder :: MonadVertex e m => Builder -> m ()
 vertexSendBuilder = void . traverse vertexSend . L.toChunks . toLazyByteString
 
-vertexPass :: MonadVertex b e m => m (a, Builder) -> m a
+vertexPass :: MonadVertex e m => m (a, Builder) -> m a
 vertexPass = (=<<) $ uncurry (<$) . fmap vertexSendBuilder
 
-vertexCopy :: MonadVertex b e m => m ()
+vertexCopy :: MonadVertex e m => m ()
 vertexCopy = vertexPass endpointChunk >>= flip unless vertexCopy
 
 
@@ -139,38 +137,29 @@ instance MonadLogger m => MonadLogger (VertexT e m) where
 
 -- MonadVertex mtl lifts --
 
-instance MonadVertex b e m => MonadVertex b e (IdentityT m) where
+instance MonadVertex e m => MonadVertex e (IdentityT m) where
     vertexSend = lift . vertexSend
-    vertexLocal = mapIdentityT . vertexLocal
 
-instance MonadVertex b e m => MonadVertex b e (ListT m) where
+instance MonadVertex e m => MonadVertex e (ListT m) where
     vertexSend = lift . vertexSend
-    vertexLocal = mapListT . vertexLocal
 
-instance MonadVertex b e m => MonadVertex b e (MaybeT m) where
+instance MonadVertex e m => MonadVertex e (MaybeT m) where
     vertexSend = lift . vertexSend
-    vertexLocal = mapMaybeT . vertexLocal
 
-instance MonadVertex b e m => MonadVertex b e (ExceptT e m) where
+instance MonadVertex e m => MonadVertex e (ExceptT e m) where
     vertexSend = lift . vertexSend
-    vertexLocal = mapExceptT . vertexLocal
 
-instance MonadVertex b e m => MonadVertex b e (ReaderT t m) where
+instance MonadVertex e m => MonadVertex e (ReaderT t m) where
     vertexSend = lift . vertexSend
-    vertexLocal = mapReaderT . vertexLocal
 
-instance MonadVertex b e m => MonadVertex b e (LazyState.StateT s m) where
+instance MonadVertex e m => MonadVertex e (LazyState.StateT s m) where
     vertexSend = lift . vertexSend
-    vertexLocal = LazyState.mapStateT. vertexLocal
 
-instance MonadVertex b e m => MonadVertex b e (StrictState.StateT s m) where
+instance MonadVertex e m => MonadVertex e (StrictState.StateT s m) where
     vertexSend = lift . vertexSend
-    vertexLocal = StrictState.mapStateT. vertexLocal
 
-instance (Monoid w, MonadVertex b e m) => MonadVertex b e (LazyWriter.WriterT w m) where
+instance (Monoid w, MonadVertex e m) => MonadVertex e (LazyWriter.WriterT w m) where
     vertexSend = lift . vertexSend
-    vertexLocal = LazyWriter.mapWriterT. vertexLocal
 
-instance (Monoid w, MonadVertex b e m) => MonadVertex b e (StrictWriter.WriterT w m) where
+instance (Monoid w, MonadVertex e m) => MonadVertex e (StrictWriter.WriterT w m) where
     vertexSend = lift . vertexSend
-    vertexLocal = StrictWriter.mapWriterT. vertexLocal

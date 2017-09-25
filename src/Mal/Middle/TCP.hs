@@ -43,7 +43,8 @@ tcpServer addr handler = do
             liftIO $ close sock
     flip finally cleanup . forever $ do
         (s, clientAddr) <- liftIO $ accept sock
-        let disconnected ex = $logInfo $
+        $logInfo $ "accepted connection from " <> pack (show clientAddr)
+        let disconnected ex = $logWarn $
                 "exception from " <> pack (show clientAddr) <> ": " <> pack (show (ex :: SomeException))
             cleanup = do
                 $logInfo $ "closing sock to " <> pack (show clientAddr)

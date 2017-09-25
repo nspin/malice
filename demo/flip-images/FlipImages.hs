@@ -17,7 +17,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Logger
-import Data.Attoparsec.ByteString
+import Data.Attoparsec.ByteString hiding (word8)
 import Data.Attoparsec.ByteString.Char8
 import Data.Bool
 import Data.ByteString.Builder
@@ -26,40 +26,40 @@ import Data.Foldable
 import Data.Monoid
 import Data.Text (pack)
 import Network.HTTP.Types
-import Numeric (showHex)
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
 
 
-flipImages :: forall m. (MonadIO m, MonadLogger m) => MalT String m ()
+flipImages :: (MonadIO v, MonadLogger v, HoistVertex String m v) => m ()
 flipImages = do
-    hoistFromTo Alice Bob $ (request :: VertexT String m ())
-    hoistFromTo Bob Alice $ (response :: VertexT String m ())
+    hoistFromTo Alice Bob request
+    hoistFromTo Bob Alice response
 
-request :: (MonadIO m, MonadLogger m, MonadVertex b String m) => m ()
+request :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
 request = do
     req <- vertexPass . endpointParseKeep $ manyTill anyChar endOfLine
-    ohdrs <- endpointParse headers
-    vertexSendBuilder . buildHeaders $ clientHeaders ohdrs
-    case bodyInfo ohdrs of
+    hdrs <- endpointParse headers
+    vertexSendBuilder . buildHeaders $
+        removeHeaders ["Connection", "Accept-Encoding"] hdrs
+            ++ [("Connection", "close"), ("Accept-Encoding", "")]
+    case bodyInfo hdrs of
         Nothing -> return () -- assume method doesn't allow request body
         Just info -> void . vertexPass . endpointParseKeep $ body info
 
-response :: (MonadIO m, MonadLogger m, MonadVertex b String m) => m ()
+response :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
 response = do
     status <- vertexPass . endpointParseKeep $ manyTill anyChar endOfLine
-    (ohdrs, obs) <- endpointParseKeep headers
-    case imageType ohdrs of
-        Nothing -> vertexSendBuilder obs >> vertexCopy
-        Just it -> do
-            info <- maybe (endpointThrow $ "no body info " ++ status ++ show ohdrs) return (bodyInfo ohdrs)
+    (hdrs, hbs) <- endpointParseKeep headers
+    case imageType hdrs of
+        Nothing -> vertexSendBuilder hbs >> vertexCopy
+        Just ityp -> do
             vertexSendBuilder . buildHeaders $
-                removeHeaders ["Transfer-Encoding", "Content-Length"] ohdrs
+                removeHeaders ["Transfer-Encoding", "Content-Length"] hdrs
                     ++ [("Transfer-Encoding", "chunked")] 
-            b <- endpointParse $ body info
-            let eb' = flipImage it (L.toStrict (toLazyByteString b))
-            case eb' of
+            b <- endpointParse $ case bodyInfo hdrs of
+                    Nothing -> foldMap word8 <$> manyTill anyWord8 endOfInput
+                    Just info -> body info
+            case flipImage ityp (L.toStrict (toLazyByteString b)) of
                 Left err -> endpointThrow err
                 Right b' -> vertexSendBuilder $ buildChunks b'
 
@@ -87,30 +87,29 @@ body Chunked = go mempty
 
 
 buildHeaders :: [Header] -> Builder
-buildHeaders hs = foldMap f hs <> byteString "\r\n"
+buildHeaders hs = foldMap f hs <> newline
   where
     f (k, v) = byteString (original k)
-            <> byteString ": "
-            <> byteString v
-            <> byteString "\r\n"
+        <> byteString ": "
+        <> byteString v
+        <> newline
 
 buildChunks :: L.ByteString -> Builder
 buildChunks bs =
     if L.length bs == 0
     then byteString "0\r\n\r\n"
-    else
-        let n = min 0x2000 (L.length bs)
-            (x, y) = L.splitAt n bs
-        in byteString (C.pack (showHex n ""))
-            <> byteString "\r\n"
-            <> lazyByteString x
-            <> byteString "\r\n"
-            <> buildChunks y
+    else wordHex (fromIntegral n)
+        <> newline
+        <> lazyByteString x
+        <> newline
+        <> buildChunks y
+  where
+    n = min 0x2000 (L.length bs)
+    (x, y) = L.splitAt n bs
 
+newline :: Builder
+newline = byteString "\r\n"
 
-clientHeaders :: [Header] -> [Header]
-clientHeaders hs = removeHeaders ["Connection", "Accept-Encoding"] hs
-    ++ [("Connection", "close"), ("Accept-Encoding", "")]
 
 removeHeaders :: [HeaderName] -> [Header] -> [Header]
 removeHeaders = filter . flip fmap fst . fmap and .  traverse (/=)

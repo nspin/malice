@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Mal.Monad.Eve
     ( Side(..)
@@ -46,7 +48,7 @@ runEveT :: EveT e m a -> Endpoints m -> Buffers -> m (Either e a, Buffers)
 runEveT = fmap runStateT . fmap runExceptT . runReaderT . getEveT
 
 
-class (MonadEve e eve, MonadEndpoint e end) => HoistEndpoint e eve end where
+class (MonadEve e eve, MonadEndpoint e end) => HoistEndpoint e eve end | eve -> end where
     hoistFrom :: Side -> end a -> eve a
 
 instance Monad m => HoistEndpoint e (EveT e m) (EndpointT e m) where
