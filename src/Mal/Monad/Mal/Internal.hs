@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Mal.Monad.Mal.Internal
     ( MalT(..)
@@ -11,11 +12,13 @@ module Mal.Monad.Mal.Internal
     , startpointTo
     ) where
 
+import Mal.Monad.Endpoint
+import Mal.Monad.Endpoint.Internal
 import Mal.Monad.Eve
 import Mal.Monad.Eve.Internal
-import Mal.Monad.Endpoint
-import Mal.Monad.Vertex
 import Mal.Monad.Internal.Hoist
+import Mal.Monad.Internal.Hoist
+import Mal.Monad.Vertex
 
 import Control.Exception
 import Control.Monad
@@ -67,14 +70,27 @@ instance Monad m => MonadEve e (MalT e m) where
     eveCatch m f = MalT . ReaderT $ \eps ->
         eveCatch
             (runReaderT (getMalT m) eps)
-            (flip runReaderT eps . getMalT . f) 
+            (flip runReaderT eps . getMalT . f)
+    type InnerEndpoint (MalT e m) = InnerEndpoint (EveT e m)
+    hoistFrom = (fmap . fmap) (MalT . lift) hoistFrom
 
 
 class MonadEve e m => MonadMal e m | m -> e where
     malSendTo :: Side -> B.ByteString -> m ()
+    type InnerVertex m :: * -> *
+    hoistFromTo :: Side -> Side -> InnerVertex m a -> m a
 
 instance Monad m => MonadMal e (MalT e m) where
     malSendTo side bs = MalT ask >>= \sps -> lift (startpointTo side sps bs)
+    type InnerVertex (MalT e m) = VertexT e m
+    hoistFromTo sfrom sto vert = MalT . ReaderT $ \sps ->
+        EveT . ReaderT $ \eps -> ExceptT $
+            substate
+                (bufferFrom sfrom)
+                (runExceptT
+                    (runReaderT
+                        (getEndpointT (runReaderT (getVertexT vert) (startpointTo sto sps)))
+                        (endpointFrom sfrom eps)))
 
 
 -- MalT mtl lifts --
@@ -96,7 +112,6 @@ instance MonadWriter w m => MonadWriter w (MalT e m) where
     listen = MalT . listen . getMalT
     pass = MalT . pass . getMalT
 
-
 instance MonadThrow m => MonadThrow (MalT e m) where
     throwM = lift . throwM
 
@@ -111,27 +126,45 @@ instance MonadLogger m => MonadLogger (MalT e m) where
 
 instance MonadMal e m => MonadMal e (IdentityT m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (IdentityT m) = IdentityT (InnerVertex m)
+    hoistFromTo sfrom sto = IdentityT . hoistFromTo sfrom sto . runIdentityT
 
 instance MonadMal e m => MonadMal e (ListT m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (ListT m) = ListT (InnerVertex m)
+    hoistFromTo sfrom sto = ListT . hoistFromTo sfrom sto . runListT
 
 instance MonadMal e m => MonadMal e (MaybeT m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (MaybeT m) = MaybeT (InnerVertex m)
+    hoistFromTo sfrom sto = MaybeT . hoistFromTo sfrom sto . runMaybeT
 
-instance MonadMal e m => MonadMal e (ExceptT e m) where
+instance MonadMal e m => MonadMal e (ExceptT e' m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (ExceptT e' m) = ExceptT e' (InnerVertex m)
+    hoistFromTo sfrom sto = ExceptT . hoistFromTo sfrom sto . runExceptT
 
 instance MonadMal e m => MonadMal e (ReaderT t m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (ReaderT r m) = ReaderT r (InnerVertex m)
+    hoistFromTo sfrom sto = ReaderT . fmap (hoistFromTo sfrom sto) . runReaderT
 
 instance MonadMal e m => MonadMal e (LazyState.StateT s m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (LazyState.StateT s m) = LazyState.StateT s (InnerVertex m)
+    hoistFromTo sfrom sto = LazyState.StateT . (.) (hoistFromTo sfrom sto) . LazyState.runStateT
 
 instance MonadMal e m => MonadMal e (StrictState.StateT s m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (StrictState.StateT s m) = StrictState.StateT s (InnerVertex m)
+    hoistFromTo sfrom sto = StrictState.StateT . (.) (hoistFromTo sfrom sto) . StrictState.runStateT
 
 instance (Monoid w, MonadMal e m) => MonadMal e (LazyWriter.WriterT w m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (LazyWriter.WriterT w m) = LazyWriter.WriterT w (InnerVertex m)
+    hoistFromTo sfrom sto = LazyWriter.WriterT . hoistFromTo sfrom sto . LazyWriter.runWriterT
 
 instance (Monoid w, MonadMal e m) => MonadMal e (StrictWriter.WriterT w m) where
     malSendTo side = lift . malSendTo side
+    type InnerVertex (StrictWriter.WriterT w m) = StrictWriter.WriterT w (InnerVertex m)
+    hoistFromTo sfrom sto = StrictWriter.WriterT . hoistFromTo sfrom sto . StrictWriter.runWriterT
