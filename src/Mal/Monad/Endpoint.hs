@@ -1,6 +1,6 @@
 module Mal.Monad.Endpoint
-    ( EndpointT
-    , MonadEndpoint(endpointThrow, endpointCatch)
+    ( MonadEndpoint(endpointThrow, endpointCatch)
+    , EndpointT
     , runEndpointT
     , runEndpointT'
     , evalEndpointT

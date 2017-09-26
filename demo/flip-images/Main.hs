@@ -69,7 +69,7 @@ main = do
     forkIO . runStderrLoggingT . filterLogger (const (> LevelDebug)) $ unChanLoggingT chan
     runChanLoggingT chan . tcpServer (SockAddrInet port 0) .
         bool socks5Handler transparentProxyHandler transparent $
-        malMaybeTLS swapKey (go . fromTCPProxyCtx) (go . fromContexts)
+            malMaybeTLS swapKey (go . fromTCPProxyCtx) (go . fromContexts)
   where
     ((_, myPriv), _) = withDRG (drgNewSeed (seedFromInteger 0)) (generate 256 3)
     go :: Vertices (LoggingT IO) -> LoggingT IO ()

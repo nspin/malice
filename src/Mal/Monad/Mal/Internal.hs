@@ -84,8 +84,8 @@ instance Monad m => MonadMal e (MalT e m) where
     malSendTo side bs = MalT ask >>= \sps -> lift (startpointTo side sps bs)
     type InnerVertex (MalT e m) = VertexT e m
     hoistFromTo sfrom sto vert = MalT . ReaderT $ \sps ->
-        EveT . ReaderT $ \eps -> ExceptT $
-            substate
+        EveT . ReaderT $ \eps ->
+            ExceptT $ substate
                 (bufferFrom sfrom)
                 (runExceptT
                     (runReaderT

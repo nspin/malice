@@ -5,8 +5,8 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Mal.Monad.Vertex
-    ( VertexT(..)
-    , MonadVertex(..)
+    ( MonadVertex(..)
+    , VertexT(..)
 
     , vertexSendBuilder
     , vertexPass
@@ -73,11 +73,20 @@ instance Monad m => MonadVertex e (VertexT e m) where
     vertexSend bs = VertexT ask >>= \send -> lift (send bs)
 
 
+vertexSendBuilder :: MonadVertex e m => Builder -> m ()
+vertexSendBuilder = void . traverse vertexSend . L.toChunks . toLazyByteString
+
+vertexPass :: MonadVertex e m => m (a, Builder) -> m a
+vertexPass = (=<<) $ uncurry (<$) . fmap vertexSendBuilder
+
+vertexCopy :: MonadVertex e m => m ()
+vertexCopy = vertexPass endpointChunk >>= flip unless vertexCopy
+
+
 data Vertex m = Vertex
     { edgeIn :: m B.ByteString
     , edgeOut :: B.ByteString -> m ()
     }
-
 
 -- Many of these functions could have their arguments re-ordered for convenience,
 -- but this way adheres to convention.
@@ -93,16 +102,6 @@ evalVertexT = (fmap.fmap.fmap.fmap) fst runVertexT
 
 evalVertexT' :: Monad m => VertexT e m a -> Vertex m -> m (Either e a)
 evalVertexT' vertex recv = evalVertexT vertex recv B.empty
-
-
-vertexSendBuilder :: MonadVertex e m => Builder -> m ()
-vertexSendBuilder = void . traverse vertexSend . L.toChunks . toLazyByteString
-
-vertexPass :: MonadVertex e m => m (a, Builder) -> m a
-vertexPass = (=<<) $ uncurry (<$) . fmap vertexSendBuilder
-
-vertexCopy :: MonadVertex e m => m ()
-vertexCopy = vertexPass endpointChunk >>= flip unless vertexCopy
 
 
 -- VertexT mtl lifts --
@@ -123,7 +122,6 @@ instance MonadWriter w m => MonadWriter w (VertexT e m) where
     tell = lift . tell
     listen = VertexT . listen . getVertexT
     pass = VertexT . pass . getVertexT
-
 
 instance MonadThrow m => MonadThrow (VertexT e m) where
     throwM = lift . throwM

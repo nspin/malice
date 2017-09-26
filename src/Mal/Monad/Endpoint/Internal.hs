@@ -48,6 +48,13 @@ class Monad m => MonadEndpoint e m | m -> e where
     endpointThrow :: e -> m a
     endpointCatch :: m a -> (e -> m a) -> m a
 
+instance Monad m => MonadEndpoint e (EndpointT e m) where
+    endpointRecv =  EndpointT ask >>= lift
+    endpointState = EndpointT . state
+    endpointThrow = EndpointT . throwError
+    endpointCatch m f = EndpointT $ catchError (getEndpointT m) (getEndpointT . f)
+
+
 endpointGetState :: MonadEndpoint e m => m B.ByteString
 endpointGetState = endpointState $ \s -> (s, s)
 
@@ -65,20 +72,14 @@ endpointUse f = do
     return a
 
 
-instance Monad m => MonadEndpoint e (EndpointT e m) where
-    endpointRecv =  EndpointT ask >>= lift
-    endpointState = EndpointT . state
-    endpointThrow = EndpointT . throwError
-    endpointCatch m f = EndpointT $ catchError (getEndpointT m) (getEndpointT . f)
-
-
 -- EndpointT mtl lifts --
 
 instance MonadError e m => MonadError e (EndpointT e m) where
     throwError = lift . throwError
-    catchError m f = EndpointT . ReaderT $ \recv -> ExceptT $ catchError
-        (runExceptT (runReaderT (getEndpointT m) recv))
-        (runExceptT . flip runReaderT recv . getEndpointT . f)
+    catchError m f = EndpointT . ReaderT $ \recv ->
+        ExceptT $ catchError
+            (runExceptT (runReaderT (getEndpointT m) recv))
+            (runExceptT . flip runReaderT recv . getEndpointT . f)
 
 instance MonadReader r m => MonadReader r (EndpointT e m) where
     ask = lift ask
@@ -92,7 +93,6 @@ instance MonadWriter w m => MonadWriter w (EndpointT e m) where
     tell = lift . tell
     listen = EndpointT . listen . getEndpointT
     pass = EndpointT . pass . getEndpointT
-
 
 instance MonadThrow m => MonadThrow (EndpointT e m) where
     throwM = lift . throwM

@@ -1,10 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Mal.Monad.Endpoint.Serialize
-    ( endpointGetKeep
-    , endpointGetKeepWith
-    , endpointGet
+    ( endpointGet
     , endpointGetWith
+    , endpointGetKeep
+    , endpointGetKeepWith
     ) where
 
 import Mal.Monad.Endpoint.Internal

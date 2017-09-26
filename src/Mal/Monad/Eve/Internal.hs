@@ -2,6 +2,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -56,13 +57,15 @@ endpointFrom Alice = endpointFromAlice
 endpointFrom Bob = endpointFromBob
 
 data Buffers = Buffers
-    { bufferFromAlice :: B.ByteString
-    , bufferFromBob :: B.ByteString
+    { _bufferFromAlice :: B.ByteString
+    , _bufferFromBob :: B.ByteString
     }
 
+makeLenses ''Buffers
+
 bufferFrom :: Side -> Lens' Buffers B.ByteString
-bufferFrom Alice = lens bufferFromAlice $ \buffs buf -> buffs { bufferFromAlice = buf }
-bufferFrom Bob = lens bufferFromBob $ \buffs buf -> buffs { bufferFromBob = buf }
+bufferFrom Alice = bufferFromAlice
+bufferFrom Bob = bufferFromBob
 
 
 newtype EveT e m a = EveT { getEveT :: ReaderT (Endpoints m) (ExceptT e (LazyState.StateT Buffers m)) a }
@@ -86,8 +89,8 @@ instance Monad m => MonadEve e (EveT e m) where
     eveThrow = EveT . throwError
     eveCatch m f = EveT $ catchError (getEveT m) (getEveT . f)
     type InnerEndpoint (EveT e m) = EndpointT e m
-    hoistFrom side ep = EveT . ReaderT $ \eps -> ExceptT $
-        substate
+    hoistFrom side ep = EveT . ReaderT $ \eps ->
+        ExceptT $ substate
             (bufferFrom side)
             (runExceptT (runReaderT (getEndpointT ep) (endpointFrom side eps)))
 
@@ -103,9 +106,10 @@ evePutState s = eveState $ const ((), s)
 
 instance MonadError e m => MonadError e (EveT e m) where
     throwError = lift . throwError
-    catchError b f = EveT . ReaderT $ \recv -> ExceptT $ catchError
-        (runExceptT (runReaderT (getEveT b) recv))
-        (runExceptT . flip runReaderT recv . getEveT . f)
+    catchError b f = EveT . ReaderT $ \recv ->
+        ExceptT $ catchError
+            (runExceptT (runReaderT (getEveT b) recv))
+            (runExceptT . flip runReaderT recv . getEveT . f)
 
 instance MonadReader r m => MonadReader r (EveT e m) where
     ask = lift ask
