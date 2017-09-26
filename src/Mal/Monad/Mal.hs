@@ -1,15 +1,15 @@
 module Mal.Monad.Mal
     ( MonadMal(..)
     , MalT(..)
+
     , Vertices(..)
     , vertexFrom
     , vertexFromTo
+
     , runMalT
     , runMalT'
     , evalMalT
     , evalMalT'
-    , Startpoints(..)
-    , startpointTo
     ) where
 
 import Mal.Monad.Mal.Internal
