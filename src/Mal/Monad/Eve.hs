@@ -1,6 +1,7 @@
 module Mal.Monad.Eve
     ( Side(..)
-    , MonadEve(eveThrow, eveCatch, InnerEndpoint, hoistFrom)
+    , HoistFrom(..)
+    , MonadEve(eveThrow, eveCatch)
     , EveT
     , runEveT
     , Endpoints(..)

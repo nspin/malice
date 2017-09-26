@@ -31,7 +31,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
 
-flipImages :: (MalBoth String m, MalInner MonadIO m, MalInner MonadLogger m) => m ()
+flipImages :: (MonadMal String m, MalInner MonadIO m, MalInner MonadLogger m) => m ()
 flipImages = do
     hoistFromTo Alice Bob request
     hoistFromTo Bob Alice response

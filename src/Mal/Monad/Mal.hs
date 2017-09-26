@@ -1,5 +1,6 @@
 module Mal.Monad.Mal
-    ( MonadMal(..)
+    ( HoistFromTo(..)
+    , MonadMal(..)
     , MalT(..)
 
     , Vertices(..)

@@ -144,7 +144,7 @@ instance MonadVertex e m => MonadVertex e (ListT m) where
 instance MonadVertex e m => MonadVertex e (MaybeT m) where
     vertexSend = lift . vertexSend
 
-instance MonadVertex e m => MonadVertex e (ExceptT e m) where
+instance MonadVertex e m => MonadVertex e (ExceptT e' m) where
     vertexSend = lift . vertexSend
 
 instance MonadVertex e m => MonadVertex e (ReaderT t m) where

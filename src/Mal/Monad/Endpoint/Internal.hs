@@ -106,7 +106,7 @@ instance MonadLogger m => MonadLogger (EndpointT e m) where
 
 -- MonadEndpoint mtl lifts --
 
-instance MonadEndpoint e m => MonadEndpoint e (ExceptT e m) where
+instance MonadEndpoint e m => MonadEndpoint e (ExceptT e' m) where
     endpointRecv = lift endpointRecv
     endpointState = lift . endpointState
     endpointThrow = lift . endpointThrow
