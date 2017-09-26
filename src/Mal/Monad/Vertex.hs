@@ -23,7 +23,6 @@ import Mal.Monad.Endpoint
 import Mal.Monad.Endpoint.Basic
 import Mal.Monad.Endpoint.Internal
 
-import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
@@ -32,7 +31,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Builder
 
-import Control.Monad.Catch as C
+import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -127,7 +126,7 @@ instance MonadThrow m => MonadThrow (VertexT e m) where
     throwM = lift . throwM
 
 instance MonadCatch m => MonadCatch (VertexT e m) where
-    catch m c = VertexT $ C.catch (getVertexT m) (getVertexT . c)
+    catch m c = VertexT $ catch (getVertexT m) (getVertexT . c)
 
 instance MonadLogger m => MonadLogger (VertexT e m) where
     monadLoggerLog a b c d = lift $ monadLoggerLog a b c d

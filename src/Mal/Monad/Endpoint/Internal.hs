@@ -14,10 +14,10 @@ module Mal.Monad.Endpoint.Internal
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
-import Control.Exception
+import Control.Exception (assert)
 import qualified Data.ByteString as B
 
-import Control.Monad.Catch as C
+import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -98,7 +98,7 @@ instance MonadThrow m => MonadThrow (EndpointT e m) where
     throwM = lift . throwM
 
 instance MonadCatch m => MonadCatch (EndpointT e m) where
-    catch m c = EndpointT $ C.catch (getEndpointT m) (getEndpointT . c)
+    catch m c = EndpointT $ catch (getEndpointT m) (getEndpointT . c)
 
 instance MonadLogger m => MonadLogger (EndpointT e m) where
     monadLoggerLog a b c d = lift $ monadLoggerLog a b c d
