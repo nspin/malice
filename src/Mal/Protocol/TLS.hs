@@ -148,5 +148,5 @@ isSKID raw = case extensionDecode raw of
 
 fromContexts :: MonadIO m => Contexts -> Vertices m
 fromContexts (Contexts client server) = Vertices
-    (Vertex (liftIO $ recvData client) (liftIO . sendData client . L.fromStrict))
-    (Vertex (liftIO $ recvData server) (liftIO . sendData server . L.fromStrict))
+    (Vertex (recvData client) (sendData client . L.fromStrict))
+    (Vertex (recvData server) (sendData server . L.fromStrict))
