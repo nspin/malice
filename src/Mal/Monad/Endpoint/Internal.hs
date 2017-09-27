@@ -1,27 +1,29 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Mal.Monad.Endpoint.Internal
     ( EndpointT(..)
     , MonadEndpoint(..)
-    , endpointGetState
-    , endpointPutState
-    , endpointUse
+
+    , Buffer(..)
+    , bufferStack
+    , bufferMore
     ) where
 
+import Control.Lens
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
-import Control.Exception (assert)
 import qualified Data.ByteString as B
 
-import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Catch
 import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT, liftCatch)
@@ -35,7 +37,7 @@ import Control.Monad.Trans.Writer.Lazy as LazyWriter (WriterT, liftCatch)
 import Control.Monad.Trans.Writer.Strict as StrictWriter (WriterT, liftCatch)
 
 
-newtype EndpointT e m a = EndpointT { getEndpointT :: ReaderT (m B.ByteString) (ExceptT e (LazyState.StateT B.ByteString m)) a }
+newtype EndpointT e m a = EndpointT { getEndpointT :: ReaderT (m B.ByteString) (ExceptT e (LazyState.StateT Buffer m)) a }
     deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans (EndpointT e) where
@@ -44,7 +46,7 @@ instance MonadTrans (EndpointT e) where
 
 class Monad m => MonadEndpoint e m | m -> e where
     endpointRecv :: m B.ByteString
-    endpointState :: (B.ByteString -> (a, B.ByteString)) -> m a
+    endpointState :: (Buffer -> (a, Buffer)) -> m a
     endpointThrow :: e -> m a
     endpointCatch :: m a -> (e -> m a) -> m a
 
@@ -55,21 +57,12 @@ instance Monad m => MonadEndpoint e (EndpointT e m) where
     endpointCatch m f = EndpointT $ catchError (getEndpointT m) (getEndpointT . f)
 
 
-endpointGetState :: MonadEndpoint e m => m B.ByteString
-endpointGetState = endpointState $ \s -> (s, s)
+data Buffer = Buffer
+    { _bufferMore :: Bool
+    , _bufferStack :: [B.ByteString]
+    }
 
-endpointPutState :: MonadEndpoint e m => B.ByteString -> m ()
-endpointPutState s = endpointState $ const ((), s)
-
-endpointUse :: MonadEndpoint e m => (B.ByteString -> (a, Int)) -> m a
-endpointUse f = do
-    b' <- endpointGetState
-    b <- case B.length b' of
-            0 -> endpointRecv
-            _ -> return b'
-    let (a, n) = f b
-    endpointPutState $ assert (n <= B.length b) (B.drop n b)
-    return a
+makeLenses ''Buffer
 
 
 -- EndpointT mtl lifts --

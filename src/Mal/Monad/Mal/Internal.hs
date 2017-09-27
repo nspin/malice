@@ -30,11 +30,11 @@ import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Builder
 import Data.Functor
 
-import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Catch
 import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT(..), runIdentityT)

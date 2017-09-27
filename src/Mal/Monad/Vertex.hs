@@ -20,22 +20,21 @@ module Mal.Monad.Vertex
     ) where
 
 import Mal.Monad.Endpoint
-import Mal.Monad.Endpoint.Basic
 import Mal.Monad.Endpoint.Internal
 
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
-import Data.Functor
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Builder
+import Data.Functor
 
-import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Catch
 import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT(..), runIdentityT, mapIdentityT)
@@ -79,7 +78,11 @@ vertexPass :: MonadVertex e m => m (a, Builder) -> m a
 vertexPass = (=<<) $ uncurry (<$) . fmap vertexSendBuilder
 
 vertexCopy :: MonadVertex e m => m ()
-vertexCopy = vertexPass endpointChunk >>= flip unless vertexCopy
+vertexCopy = do
+    m <- endpointPop
+    case m of
+        Nothing -> return ()
+        Just b -> vertexSend b >> vertexCopy
 
 
 data Vertex m = Vertex
@@ -90,17 +93,17 @@ data Vertex m = Vertex
 -- Many of these functions could have their arguments re-ordered for convenience,
 -- but this way adheres to convention.
 
-runVertexT :: VertexT e m a -> Vertex m -> B.ByteString -> m (Either e a, B.ByteString)
+runVertexT :: Monad m => VertexT e m a -> Vertex m -> L.ByteString -> m (Either e a, L.ByteString)
 runVertexT m (Vertex ein eout) = runEndpointT (runReaderT (getVertexT m) eout) ein
 
-runVertexT' :: VertexT e m a -> Vertex m -> m (Either e a, B.ByteString)
-runVertexT' m v = runVertexT m v B.empty
+runVertexT' :: Monad m => VertexT e m a -> Vertex m -> m (Either e a, L.ByteString)
+runVertexT' m v = runVertexT m v L.empty
 
-evalVertexT :: Monad m => VertexT e m a -> Vertex m -> B.ByteString -> m (Either e a)
+evalVertexT :: Monad m => VertexT e m a -> Vertex m -> L.ByteString -> m (Either e a)
 evalVertexT = (fmap.fmap.fmap.fmap) fst runVertexT
 
 evalVertexT' :: Monad m => VertexT e m a -> Vertex m -> m (Either e a)
-evalVertexT' vertex recv = evalVertexT vertex recv B.empty
+evalVertexT' vertex recv = evalVertexT vertex recv L.empty
 
 
 -- VertexT mtl lifts --

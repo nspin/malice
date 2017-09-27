@@ -18,7 +18,7 @@ import Mal.Monad.Eve
 import Mal.Monad.Vertex
 
 import Control.Monad.Reader
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 
 
 data Vertices m = Vertices
@@ -34,7 +34,7 @@ vertexFromTo :: Side -> Side -> Vertices m -> Vertex m
 vertexFromTo x y = Vertex <$> (edgeIn . vertexFrom x) <*> (edgeOut . vertexFrom y)
 
 
-runMalT :: MalT e m a -> Vertices m -> Buffers -> m (Either e a, Buffers)
+runMalT :: Monad m => MalT e m a -> Vertices m -> Unconsumed -> m (Either e a, Unconsumed)
 runMalT m vs bufs = runEveT (runReaderT (getMalT m) sps) eps bufs
   where
     sps = Startpoints
@@ -46,11 +46,11 @@ runMalT m vs bufs = runEveT (runReaderT (getMalT m) sps) eps bufs
         , endpointFromBob = edgeIn $ vertexBob vs
         }
 
-runMalT' :: MalT e m a -> Vertices m -> m (Either e a, Buffers)
-runMalT' m vs = runMalT m vs $ Buffers B.empty B.empty
+runMalT' :: Monad m => MalT e m a -> Vertices m -> m (Either e a, Unconsumed)
+runMalT' m vs = runMalT m vs $ Unconsumed L.empty L.empty
 
-evalMalT :: Monad m => MalT e m a -> Vertices m -> Buffers -> m (Either e a)
+evalMalT :: Monad m => MalT e m a -> Vertices m -> Unconsumed -> m (Either e a)
 evalMalT = (fmap.fmap.fmap.fmap) fst runMalT
 
 evalMalT' :: Monad m => MalT e m a -> Vertices m -> m (Either e a)
-evalMalT' m vs = evalMalT m vs $ Buffers B.empty B.empty
+evalMalT' m vs = evalMalT m vs $ Unconsumed L.empty L.empty

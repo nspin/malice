@@ -8,12 +8,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Mal.Monad.Eve.Internal
-    ( Side(..)
+    ( MonadEve(..)
+    , Side(..)
     , HoistFrom(..)
-    , MonadEve(..)
-    , eveGetState
-    , evePutState
     , EveT(..)
+
     , Endpoints(..)
     , endpointFrom
     , Buffers(..)
@@ -30,12 +29,12 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import qualified Data.ByteString as B
 
-import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Monad.Logger
-import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Writer
+import Control.Monad.Catch
+import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT(..), liftCatch)
 import Control.Monad.Trans.List as List (ListT(..), liftCatch)
@@ -59,13 +58,13 @@ endpointFrom Alice = endpointFromAlice
 endpointFrom Bob = endpointFromBob
 
 data Buffers = Buffers
-    { _bufferFromAlice :: B.ByteString
-    , _bufferFromBob :: B.ByteString
+    { _bufferFromAlice :: Buffer
+    , _bufferFromBob :: Buffer
     }
 
 makeLenses ''Buffers
 
-bufferFrom :: Side -> Lens' Buffers B.ByteString
+bufferFrom :: Side -> Lens' Buffers Buffer
 bufferFrom Alice = bufferFromAlice
 bufferFrom Bob = bufferFromBob
 
@@ -100,13 +99,6 @@ instance Monad m => MonadEve e (EveT e m) where
     eveState = EveT . state
     eveThrow = EveT . throwError
     eveCatch m f = EveT $ catchError (getEveT m) (getEveT . f)
-
-
-eveGetState :: MonadEve e m => m Buffers
-eveGetState = eveState $ \s -> (s, s)
-
-evePutState :: MonadEve e m => Buffers -> m ()
-evePutState s = eveState $ const ((), s)
 
 
 -- EveT mtl lifts --
