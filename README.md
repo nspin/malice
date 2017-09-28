@@ -3,7 +3,7 @@ Malice
 
 Malice is a Haskell library that provides abstractions and protocol-specific attacks for intercepting and modifying network traffic. It leverages the power of Haskell's type system to define an embedded DSL for describing the actions of Eve and Mallory. In effect, it allows a man or woman in the middle to write code that is as close to pure evil as possible.
 
-Malice is inspired by [mallory](https://github.com/CarveSystems/mallory) and [mitmproxy](https://github.com/mitmproxy/mitmproxy).
+Malice is inspired by [Mallory](https://github.com/CarveSystems/mallory) and [mitmproxy](https://github.com/mitmproxy/mitmproxy).
 
 ## Core Abstractions
 
@@ -129,7 +129,7 @@ Furthermore, for a nice example for just `MonadVertex`, see `Mal.Middle.Socks5`.
 ## Protocol Support
 
 The only protocol-specific attack included right now is a basic SSL-sniff-style key swap that requires your TLS client to trust Malice's certs (which `scripts/new-root` can generate for you).
-Thanks to Vincent Hanquez's wonderful library [tls](https://hackage.haskell.org/package/tls), this required only 150 lines of code (found in `Mal.Protocol.TLS`).
+Thanks to Vincent Hanquez's wonderful [tls](https://hackage.haskell.org/package/tls) library, this required only 150 lines of code (found in `Mal.Protocol.TLS`).
 
 Other protocols will be added as needed. SSH will probably be next.
 
