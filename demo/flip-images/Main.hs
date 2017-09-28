@@ -51,8 +51,8 @@ opts = Opts
         <> showDefault
         <> help "Port on which to listen"
         )
-    <*> argument str (metavar "CERT_IN" <> help "Input path for root certificate")
-    <*> argument str (metavar "PRIV_IN" <> help "Input path for root key")
+    <*> argument str (metavar "CERT" <> help "Input path for root certificate")
+    <*> argument str (metavar "PRIV" <> help "Input path for root key")
 
 parser = info (opts <**> helper)
     (  fullDesc

@@ -5,18 +5,15 @@ Malice is a Haskell library that provides abstractions and protocol-specific att
 
 Malice is inspired by [mallory](https://github.com/CarveSystems/mallory) and [mitmproxy](https://github.com/mitmproxy/mitmproxy).
 
-As the API is currently in flux, much of the code is not properly marked up for Haddock.
-That will change within the coming weeks.
-
 ## Core Abstractions
 
 ### Monad Transformers
 
-At the core of Malice lie four Monad transformers:
+At the core of Malice lie four monad transformers:
 
 #### `EndpointT`
 
-`EndpointT` provides a buffered interface to a stream endpoint (e.g. `recv` on a socket) suitable for use with Haskell's great parsing libraries such as [Attoparsec](https://hackage.haskell.org/package/attoparsec) and [Serialize](https://hackage.haskell.org/package/cereal-0.5.4.0).
+`EndpointT` provides a buffered interface to a stream endpoint (e.g. `recv` on a socket) suitable for use with Haskell's great parser combinator and serialization libraries such as [attoparsec](https://hackage.haskell.org/package/attoparsec) and [cereal](https://hackage.haskell.org/package/cereal-0.5.4.0).
 It also provides a means of throwing and catching pure protocol-related exceptions.
 
 #### `VertexT`
@@ -39,7 +36,6 @@ These two uses are depicted below:
 
 `EveT` is just like `EndpointT`, except it provides buffered interfaces for two stream endpoints.
 This is an abstraction for a passive man in the middle, and is depicted below.
-Give a specific side of the communication that an `EveT` action sits between, Alice or Bob, an `EndpointT` action can be hoisted into an `EveT` action.
 
 ```
       Bob
@@ -55,7 +51,8 @@ Give a specific side of the communication that an `EveT` action sits between, Al
 Alice
 ```
 
-The `o`'s represent effective `EndpointT` contexts.
+Give a specific side of the communication that an `EveT` action sits between (Alice or Bob), an `EndpointT` action can be hoisted into an `EveT` action.
+Here, the `o`'s represent effective `EndpointT` contexts.
 
 #### `MalT`
 
@@ -80,8 +77,8 @@ Accordingly, given a source side and destination side, a `VertexT` action can be
 
 ### Monad Classes
 
-The monad transformers come with [mtl](https://hackage.haskell.org/package/mtl)-style type classes.
-They work like you would expect.
+These monad transformers come with [mtl](https://hackage.haskell.org/package/mtl)-compatible monad classes.
+They work like one would expect.
 The diagram below depicts how the relationships described above apply to these classes:
 
 ```
@@ -125,21 +122,20 @@ hoistFromTo :: MonadMal e m => Side -> Side -> (InnerVertex m) a -> m a
 ```
 
 All of these relationship make more sense when seen in action.
-A well-commented demo of flipping images over HTTP and HTTPS (without any external HTTP protocol logic, except for some types) can be found at [demo/flip-images/FlipImages.hs](demo/flip-images/FlipImages.hs). The **Demo** section below describes how to run the example.
+A well-commented demonstration of flipping images over HTTP and HTTPS (without any external HTTP protocol logic) can be found at [demo/flip-images/FlipImages.hs](demo/flip-images/FlipImages.hs). The **Demo** section below describes how to run the example.
 
 Furthermore, for a nice example for just `MonadVertex`, see `Mal.Middle.Socks5`.
 
 ## Protocol Support
 
-The only protocol-specific attack included right now is a basic SSL-sniff-style that requires your TLS client to trust Malice's certs (`scripts/new-root` will generate these for you).
+The only protocol-specific attack included right now is a basic SSL-sniff-style key swap that requires your TLS client to trust Malice's certs (which `scripts/new-root` can generate for you).
 Thanks to Vincent Hanquez's wonderful library [tls](https://hackage.haskell.org/package/tls), this required only 150 lines of code (found in `Mal.Protocol.TLS`).
 
 Other protocols will be added as needed. SSH will probably be next.
 
-## Getting into the Middle
+## Routing Traffic through Malice
 
-Malice also provides some ways of actually getting in-between Alice and Bob.
-Currently, it contains a SOCK5 server and a tranparent TCP proxy that uses netfilter.
+Currently, Malice contains a SOCK5 server and a tranparent TCP proxy that uses netfilter.
 
 ## Demo
 
@@ -149,10 +145,10 @@ It demonstrates the ease with which one can modify structured streams using Mali
 It's usage is as follows:
 
 ```
-flip-images [-t|--transparent] [-p|--port PORT] CERT_IN PRIV_IN
+flip-images [-t|--transparent] [-p|--port PORT] CERT PRIV
 ```
 
-Where `CERT_IN` is a PEM-encoded CA certificate and `PRIV_IN` is the corresponding PEM-encoded RSA private key.
+Where `CERT` is a PEM-encoded CA certificate and `PRIV` is the corresponding PEM-encoded RSA private key.
 `./scripts/new-root` can generate these for you.
 You will need to install this certificate as a root in your browser.
 
@@ -160,7 +156,7 @@ By default, `flip-images` runs as a SOCKS5 server.
 The `-t` flag causes it to instead run as a transparent TCP proxy, using netfilter to forward connections along to their intended destinations.
 With this option, you will need to direct all of Bob's traffic to the proxy port.
 
-This iptables rule is probably the easiest way to test out transparent mode (where Malice runs as `$uid`, which must be different from that of Bob):
+This iptables rule is probably the easiest way to test out transparent mode on a single machine (where Malice runs as `$uid`, which must be different from that of Bob):
 
 ```
 iptables -t nat -A OUTPUT -p tcp -m multiport --dports 80,443 -m owner ! --uid-owner $uid -j REDIRECT --to-port $port
