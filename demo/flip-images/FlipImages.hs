@@ -14,8 +14,6 @@ import Codec.Picture.Png
 import Codec.Picture.Types
 import Control.Applicative
 import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Logger
 import Data.Attoparsec.ByteString hiding (word8)
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString as B
@@ -27,36 +25,55 @@ import Data.Monoid
 import Data.Text (pack)
 import Network.HTTP.Types
 
-
-flipImages :: (MonadMal String m, MalInner MonadIO m, MalInner MonadLogger m) => m ()
+-- Mal action to flip images. HTTP is synchronous, so we just handle the
+-- request then the response in order. If logging or IO were necessary, they
+-- could be added to the type signature using the constraints found in
+-- 'Mal.Monad'. For example, 'MalAll MonadLogger m' would allow you to do
+-- logging in both the Mal context and the hoisted Vertex contexts.
+flipImages :: MonadMal String m => m ()
 flipImages = do
     hoistFromTo Alice Bob request
     hoistFromTo Bob Alice response
 
-request :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
+-- Modify the request from Alice to Bob to make sure that the response is easy
+-- to mess with, because we are lazy. In real life, this would compromise
+-- Mallory's position. In particular, we make sure the response is not
+-- compressed and that the connection is only used for one request.
+request :: MonadVertex String m => m ()
 request = do
+    -- Pass along request line
     req <- forward $ manyTill anyChar endOfLine
+    -- Parse headers
     hdrs <- await headers
+    -- Send modified headers
     yield . buildHeaders $
         removeHeaders ["Connection", "Accept-Encoding"] hdrs
             ++ [("Connection", "close"), ("Accept-Encoding", "")]
+    -- Forward body according to its tranfer encoding
     case bodyInfo hdrs of
         Nothing -> return () -- assume method doesn't allow request body
         Just info -> forward_ $ body info
 
-response :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
+-- If response body is a JPEG or PNG, flip it.
+response :: MonadVertex String m => m ()
 response = do
+    -- Pass along status line
     status <- forward $ manyTill anyChar endOfLine
+    -- Parse headers, and keep original bytes
     (hdrs, hb) <- await' headers
     case imageType hdrs of
+        -- No image, just send original headers and proxy the rest of the response
         Nothing -> yield hb >> proxy
         Just ityp -> do
+            -- Make sure headers indicate chunked transfer encoding, and send them
             yield . buildHeaders $
                 removeHeaders ["Transfer-Encoding", "Content-Length"] hdrs
-                    ++ [("Transfer-Encoding", "chunked")] 
+                    ++ [("Transfer-Encoding", "chunked")]
+            -- Parse body according to original transfer encoding
             b <- await $ case bodyInfo hdrs of
                     Nothing -> foldMap word8 <$> manyTill anyWord8 endOfInput
                     Just info -> body info
+            -- Flip the image and send it
             case flipImage ityp (L.toStrict (toLazyByteString b)) of
                 Left err -> raise err
                 Right b' -> yield $ buildChunks b'

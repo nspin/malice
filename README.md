@@ -5,6 +5,9 @@ Malice is a Haskell library that provides abstractions and protocol-specific att
 
 Malice is inspired by [mallory](https://github.com/CarveSystems/mallory) and [mitmproxy](https://github.com/mitmproxy/mitmproxy).
 
+As the API is currently in flux, much of the code is not properly marked up for Haddock.
+That will change within the coming weeks.
+
 ## Core Abstractions
 
 ### Monad Transformers
@@ -39,12 +42,12 @@ This is an abstraction for a passive man in the middle, and is depicted below.
 Give a specific side of the communication that an `EveT` action sits between, Alice or Bob, an `EndpointT` action can be hoisted into an `EveT` action.
 
 ```
-          Bob
-           v
-           |
-           |
-           v
-  o        o
+      Bob
+       v
+       |
+       |
+       v
+  o    o
   ^
   |
   |
@@ -61,15 +64,15 @@ The `o`'s represent effective `EndpointT` contexts.
 Like `VertexT`, `MalT` can be viewed in two different ways.
 
 ```
-      Bob         Bob
-     v   ^        ^  v
-     |   |        |  |
-      \ /         |  |
-  o    o    OR    o  o
- / \              |  |
-|   |             |  |
-^   v             ^  v
-Alice             Alice
+      Bob        Bob
+     v   ^       ^  v
+     |   |       |  |
+      \ /        |  |
+  o    o    OR   o  o
+ / \             |  |
+|   |            |  |
+^   v            ^  v
+Alice            Alice
 ```
 
 Here, the `o`'s represent effective `VertexT` contexts.
@@ -123,6 +126,15 @@ hoistFromTo :: MonadMal e m => Side -> Side -> (InnerVertex m) a -> m a
 
 All of these relationship make more sense when seen in action.
 A well-commented demo of flipping images over HTTP and HTTPS (without any external HTTP protocol logic, except for some types) can be found at [demo/flip-images/FlipImages.hs](demo/flip-images/FlipImages.hs). The **Demo** section below describes how to run the example.
+
+Furthermore, for a nice example for just `MonadVertex`, see `Mal.Middle.Socks5`.
+
+## Protocol Support
+
+The only protocol-specific attack included right now is a basic SSL-sniff-style that requires your TLS client to trust Malice's certs (`scripts/new-root` will generate these for you).
+Thanks to Vincent Hanquez's wonderful library [tls](https://hackage.haskell.org/package/tls), this required only 150 lines of code (found in `Mal.Protocol.TLS`).
+
+Other protocols will be added as needed. SSH will probably be next.
 
 ## Getting into the Middle
 

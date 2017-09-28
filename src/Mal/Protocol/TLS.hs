@@ -70,7 +70,8 @@ malTLS swapKey client server mitm = do
                     $logDebug $ "swap: " <> pack (show chain) <> " -> " <> pack (show swapped)
                     return $ Credentials [swapped]
 
-                handshakeHook label handshake = handshake <$ (run . $logDebug $ "handshake recv: " <> pack label <> ": " <> pack (show handshake))
+                handshakeHook label handshake = handshake <$
+                    (run . $logDebug $ "handshake recv: " <> pack label <> ": " <> pack (show handshake))
 
             clientCtx <- contextNew client $ (def :: ServerParams)
                         { serverSupported = def
@@ -80,7 +81,7 @@ malTLS swapKey client server mitm = do
                             { onServerNameIndication = doTrade
                             }
                         }
-            contextHookSetHandshakeRecv clientCtx $ handshakeHook "CLIENT"
+            contextHookSetHandshakeRecv clientCtx $ handshakeHook "client"
             clientHandshake <- async $ handshake clientCtx
 
             mhost <- takeMVar hostSpot
@@ -101,7 +102,7 @@ malTLS swapKey client server mitm = do
                         }
 
             serverCtx <- contextNew server serverParams
-            contextHookSetHandshakeRecv serverCtx $ handshakeHook "SERVER"
+            contextHookSetHandshakeRecv serverCtx $ handshakeHook "server"
             handshake serverCtx
             wait clientHandshake
             return (clientCtx, serverCtx)
