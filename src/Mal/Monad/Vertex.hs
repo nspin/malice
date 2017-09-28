@@ -8,6 +8,7 @@ module Mal.Monad.Vertex
     ( MonadVertex(..)
     , yield
     , forward
+    , forward_
     , proxy
 
     , VertexT(..)
@@ -75,6 +76,9 @@ yield = yieldWith vertexSend
 
 forward :: (MonadVertex e m, Awaitable e f) => f a -> m a
 forward = await' >=> uncurry (<$) . fmap yield
+
+forward_ :: (MonadVertex e m, Awaitable e f) => f a -> m ()
+forward_ = void . forward
 
 proxy :: MonadVertex e m => m ()
 proxy = do

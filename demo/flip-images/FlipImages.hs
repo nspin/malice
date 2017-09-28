@@ -1,7 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
 
 module FlipImages
     ( flipImages
@@ -20,15 +18,14 @@ import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Data.Attoparsec.ByteString hiding (word8)
 import Data.Attoparsec.ByteString.Char8
-import Data.Bool
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Builder
 import Data.CaseInsensitive (mk, original)
 import Data.Foldable
 import Data.Monoid
 import Data.Text (pack)
 import Network.HTTP.Types
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
 
 
 flipImages :: (MonadMal String m, MalInner MonadIO m, MalInner MonadLogger m) => m ()
@@ -45,7 +42,7 @@ request = do
             ++ [("Connection", "close"), ("Accept-Encoding", "")]
     case bodyInfo hdrs of
         Nothing -> return () -- assume method doesn't allow request body
-        Just info -> void . forward $ body info
+        Just info -> forward_ $ body info
 
 response :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
 response = do
@@ -128,8 +125,8 @@ imageType :: [Header] -> Maybe ImageType
 imageType = lookup "Content-Type" >=> f
   where
     f v | v == "image/jpeg" = Just JPG
-        | v == "image/png"  = Just PNG
-        | otherwise         = Nothing
+        | v == "image/png" = Just PNG
+        | otherwise = Nothing
 
 
 flipImage :: ImageType -> B.ByteString -> Either String L.ByteString
@@ -143,16 +140,16 @@ flipImage PNG b = case decodePng b of
 
 flipDynamic :: DynamicImage -> DynamicImage
 flipDynamic dimg = case dimg of
-    ImageY8 img -> ImageY8 $ flipVertically img
-    ImageY16 img -> ImageY16 $ flipVertically img
-    ImageYF img -> ImageYF $ flipVertically img
-    ImageYA8 img -> ImageYA8 $ flipVertically img
-    ImageYA16 img -> ImageYA16 $ flipVertically img
-    ImageRGB8 img -> ImageRGB8 $ flipVertically img
-    ImageRGB16 img -> ImageRGB16 $ flipVertically img
-    ImageRGBF img -> ImageRGBF $ flipVertically img
-    ImageRGBA8 img -> ImageRGBA8 $ flipVertically img
-    ImageRGBA16 img -> ImageRGBA16 $ flipVertically img
-    ImageYCbCr8 img -> ImageYCbCr8 $ flipVertically img
-    ImageCMYK8 img -> ImageCMYK8 $ flipVertically img
-    ImageCMYK16 img -> ImageCMYK16 $ flipVertically img
+    ImageY8     x -> ImageY8     (flipVertically x)
+    ImageY16    x -> ImageY16    (flipVertically x)
+    ImageYF     x -> ImageYF     (flipVertically x)
+    ImageYA8    x -> ImageYA8    (flipVertically x)
+    ImageYA16   x -> ImageYA16   (flipVertically x)
+    ImageRGB8   x -> ImageRGB8   (flipVertically x)
+    ImageRGB16  x -> ImageRGB16  (flipVertically x)
+    ImageRGBF   x -> ImageRGBF   (flipVertically x)
+    ImageRGBA8  x -> ImageRGBA8  (flipVertically x)
+    ImageRGBA16 x -> ImageRGBA16 (flipVertically x)
+    ImageYCbCr8 x -> ImageYCbCr8 (flipVertically x)
+    ImageCMYK8  x -> ImageCMYK8  (flipVertically x)
+    ImageCMYK16 x -> ImageCMYK16 (flipVertically x)
