@@ -124,7 +124,7 @@ hoistFromTo :: MonadMal e m => Side -> Side -> (InnerVertex m) a -> m a
 All of these relationship make more sense when seen in action.
 A well-commented demo of flipping images over HTTP and HTTPS (without any external HTTP protocol logic, except for some types) can be found at [demo/flip-images/FlipImages.hs](demo/flip-images/FlipImages.hs). The **Demo** section below describes how to run the example.
 
-## Getting Into the Middle
+## Getting into the Middle
 
 Malice also provides some ways of actually getting in-between Alice and Bob.
 Currently, it contains a SOCK5 server and a tranparent TCP proxy that uses netfilter.
