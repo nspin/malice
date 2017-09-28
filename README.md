@@ -133,7 +133,7 @@ Thanks to Vincent Hanquez's wonderful [tls](https://hackage.haskell.org/package/
 
 Other protocols will be added as needed. SSH will probably be next.
 
-## Routing Traffic through Malice
+## Routing Traffic Through Malice
 
 Currently, Malice contains a SOCK5 server and a tranparent TCP proxy that uses netfilter.
 
