@@ -1,14 +1,11 @@
 module Mal.Monad.Vertex.Serialize
-    ( vertexPut
-    , vertexPutPut
+    ( yieldPut
     ) where
 
 import Mal.Monad.Vertex
+import Mal.Monad.Vertex.Yieldable
 
 import Data.Serialize
 
-vertexPutPut :: MonadVertex e m => Put -> m ()
-vertexPutPut = vertexSendBuilder . execPut
-
-vertexPut :: (MonadVertex e m, Serialize a) => a -> m ()
-vertexPut = vertexPutPut . put
+yieldPut :: (MonadVertex e m, Serialize a) => a -> m ()
+yieldPut = yield . put

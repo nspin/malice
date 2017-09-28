@@ -1,11 +1,17 @@
-module Mal.Monad.Endpoint
-    ( MonadEndpoint(endpointThrow, endpointCatch)
-    , EndpointT
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
+module Mal.Monad.Endpoint
+    ( MonadEndpoint()
+    , raise
+    , except
+
+    , Awaitable(..)
     , endpointPush
     , endpointPop
-    , endpointChunk
+    , awaitChunk
 
+    , EndpointT
     , runEndpointT
     , runEndpointT'
     , evalEndpointT
@@ -21,6 +27,7 @@ import Control.Monad.State
 import Data.Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import Data.ByteString.Builder
 
 
 endpointHasMore :: MonadEndpoint e m => m Bool
@@ -50,8 +57,21 @@ endpointPop = do
                 _ -> return $ Just b
         _ -> return mb
 
-endpointChunk :: MonadEndpoint e m => m B.ByteString
-endpointChunk = fromMaybe B.empty <$> endpointPop
+awaitChunk :: MonadEndpoint e m => m B.ByteString
+awaitChunk = fromMaybe B.empty <$> endpointPop
+
+
+class Awaitable e f | f -> e where
+    await' :: MonadEndpoint e m => f a -> m (a, Builder)
+    await :: MonadEndpoint e m => f a -> m a
+    await = fmap fst . await'
+
+
+raise :: MonadEndpoint e m => e -> m a
+raise = endpointThrow
+
+except :: MonadEndpoint e m => m a -> (e -> m a) -> m a
+except = endpointCatch
 
 
 -- Many of these functions could have their arguments re-ordered for convenience,
@@ -59,9 +79,9 @@ endpointChunk = fromMaybe B.empty <$> endpointPop
 
 runEndpointT :: Monad m => EndpointT e m a -> m B.ByteString -> L.ByteString -> m (Either e a, L.ByteString)
 runEndpointT m recv init = (fmap.fmap) (L.fromChunks . view bufferStack) $
-	runStateT
-		(runExceptT (runReaderT (getEndpointT m) recv))
-		(Buffer True (filter (not . B.null) (L.toChunks init)))
+    runStateT
+        (runExceptT (runReaderT (getEndpointT m) recv))
+        (Buffer True (filter (not . B.null) (L.toChunks init)))
 
 runEndpointT' :: Monad m => EndpointT e m a -> m B.ByteString -> m (Either e a, L.ByteString)
 runEndpointT' endpoint recv = runEndpointT endpoint recv L.empty

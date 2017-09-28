@@ -3,14 +3,15 @@
 
 module Mal.Monad
     ( module Mal.Monad.Endpoint
-    , module Mal.Monad.Vertex
-    , module Mal.Monad.Eve
-    , module Mal.Monad.Mal
-
     , module Mal.Monad.Endpoint.Serialize
     , module Mal.Monad.Endpoint.Attoparsec
 
+    , module Mal.Monad.Vertex
+    , module Mal.Monad.Vertex.Yieldable
     , module Mal.Monad.Vertex.Serialize
+
+    , module Mal.Monad.Eve
+    , module Mal.Monad.Mal
 
     , EveInner
     , MalInner
@@ -19,14 +20,13 @@ module Mal.Monad
     ) where
 
 import Mal.Monad.Endpoint
+import Mal.Monad.Endpoint.Attoparsec
+import Mal.Monad.Endpoint.Serialize
 import Mal.Monad.Vertex
+import Mal.Monad.Vertex.Yieldable
+import Mal.Monad.Vertex.Serialize
 import Mal.Monad.Eve
 import Mal.Monad.Mal
-
-import Mal.Monad.Endpoint.Serialize
-import Mal.Monad.Endpoint.Attoparsec
-
-import Mal.Monad.Vertex.Serialize
 
 import GHC.Exts (Constraint)
 

@@ -19,6 +19,7 @@ library
                     , Mal.Monad.Endpoint.Attoparsec
                     , Mal.Monad.Endpoint.Internal
                     , Mal.Monad.Vertex
+                    , Mal.Monad.Vertex.Yieldable
                     , Mal.Monad.Vertex.Serialize
                     , Mal.Monad.Eve
                     , Mal.Monad.Eve.Internal

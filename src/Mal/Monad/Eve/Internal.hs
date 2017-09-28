@@ -174,6 +174,14 @@ instance (HoistFrom m, Monoid w) => HoistFrom (StrictWriter.WriterT w m) where
 
 -- MonadEve mtl lifts --
 
+instance MonadEve e m => MonadEve e (ExceptT e' m) where
+    eveRecvFrom = lift . eveRecvFrom
+    eveState = lift . eveState
+    eveThrow = lift . eveThrow
+    eveCatch m f = ExceptT $ eveCatch (runExceptT m) (runExceptT . f)
+
+--
+
 instance MonadEve e m => MonadEve e (IdentityT m) where
     eveRecvFrom = lift . eveRecvFrom
     eveState = lift . eveState
@@ -191,12 +199,6 @@ instance MonadEve e m => MonadEve e (MaybeT m) where
     eveState = lift . eveState
     eveThrow = lift . eveThrow
     eveCatch = Maybe.liftCatch eveCatch
-
-instance MonadEve e m => MonadEve e (ExceptT e' m) where
-    eveRecvFrom = lift . eveRecvFrom
-    eveState = lift . eveState
-    eveThrow = lift . eveThrow
-    eveCatch m f = ExceptT $ eveCatch (runExceptT m) (runExceptT . f)
 
 instance MonadEve e m => MonadEve e (ReaderT t m) where
     eveRecvFrom = lift . eveRecvFrom

@@ -6,12 +6,11 @@
 
 module Mal.Monad.Vertex
     ( MonadVertex(..)
+    , yield
+    , forward
+    , proxy
+
     , VertexT(..)
-
-    , vertexSendBuilder
-    , vertexPass
-    , vertexCopy
-
     , Vertex(..)
     , runVertexT
     , runVertexT'
@@ -21,6 +20,7 @@ module Mal.Monad.Vertex
 
 import Mal.Monad.Endpoint
 import Mal.Monad.Endpoint.Internal
+import Mal.Monad.Vertex.Yieldable
 
 import Control.Monad
 import Control.Monad.IO.Class
@@ -70,19 +70,18 @@ class MonadEndpoint e m => MonadVertex e m | m -> e where
 instance Monad m => MonadVertex e (VertexT e m) where
     vertexSend bs = VertexT ask >>= \send -> lift (send bs)
 
+yield :: (MonadVertex e m, Yieldable a) => a -> m ()
+yield = yieldWith vertexSend
 
-vertexSendBuilder :: MonadVertex e m => Builder -> m ()
-vertexSendBuilder = void . traverse vertexSend . L.toChunks . toLazyByteString
+forward :: (MonadVertex e m, Awaitable e f) => f a -> m a
+forward = await' >=> uncurry (<$) . fmap yield
 
-vertexPass :: MonadVertex e m => m (a, Builder) -> m a
-vertexPass = (=<<) $ uncurry (<$) . fmap vertexSendBuilder
-
-vertexCopy :: MonadVertex e m => m ()
-vertexCopy = do
+proxy :: MonadVertex e m => m ()
+proxy = do
     m <- endpointPop
     case m of
         Nothing -> return ()
-        Just b -> vertexSend b >> vertexCopy
+        Just b -> yield b >> proxy
 
 
 data Vertex m = Vertex

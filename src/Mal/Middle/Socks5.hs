@@ -43,29 +43,29 @@ socks5Handler mitm (Connection client addr) = do
 
 link :: (MonadIO m, MonadCatch m, MonadVertex String m) => m (SocksAddress, Socket)
 link = do
-    SocksHello meths <- endpointGet
+    SocksHello meths <- awaitGet
     when (not (SocksMethodNone `elem` meths)) $ do
-        vertexPut $ SocksHelloResponse SocksMethodNotAcceptable
-        endpointThrow "null authentication not in client methods"
-    vertexPut $ SocksHelloResponse SocksMethodNone
-    SocksRequest cmd socksAddr port <- endpointGet
+        yieldPut $ SocksHelloResponse SocksMethodNotAcceptable
+        raise "null authentication not in client methods"
+    yieldPut $ SocksHelloResponse SocksMethodNone
+    SocksRequest cmd socksAddr port <- awaitGet
     when (cmd /= SocksCommandConnect) $ do
-        vertexPut $ SocksResponse
+        yieldPut $ SocksResponse
             (SocksReplyError SocksErrorCommandNotSupported)
             (SocksAddrDomainName "go.away")
             0xdead
-        endpointThrow "method is not connect"
+        raise "method is not connect"
     let saddr = SocksAddress socksAddr port
-    (family, addr) <- liftIO (resolveSocksAddr saddr) >>= either endpointThrow return
+    (family, addr) <- liftIO (resolveSocksAddr saddr) >>= either raise return
     sock <- liftIO $ socket family Stream defaultProtocol
     liftIO (connect sock addr) `catch` \(ex :: SomeException) -> do
-        vertexPut $ SocksResponse
+        yieldPut $ SocksResponse
             (SocksReplyError SocksErrorHostUnreachable)
             (SocksAddrDomainName "go.away")
             0xdead
-        endpointThrow $ show ex
-    SocksAddress host port <- liftIO (resolveSockAddr <$> getSocketName sock) >>= either endpointThrow return
-    vertexPut $ SocksResponse (SocksReplySuccess) host port
+        raise $ show ex
+    SocksAddress host port <- liftIO (resolveSockAddr <$> getSocketName sock) >>= either raise return
+    yieldPut $ SocksResponse (SocksReplySuccess) host port
     return (saddr, sock)
 
 

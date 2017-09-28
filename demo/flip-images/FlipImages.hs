@@ -38,31 +38,31 @@ flipImages = do
 
 request :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
 request = do
-    req <- vertexPass . endpointParseKeep $ manyTill anyChar endOfLine
-    hdrs <- endpointParse headers
-    vertexSendBuilder . buildHeaders $
+    req <- forward $ manyTill anyChar endOfLine
+    hdrs <- await headers
+    yield . buildHeaders $
         removeHeaders ["Connection", "Accept-Encoding"] hdrs
             ++ [("Connection", "close"), ("Accept-Encoding", "")]
     case bodyInfo hdrs of
         Nothing -> return () -- assume method doesn't allow request body
-        Just info -> void . vertexPass . endpointParseKeep $ body info
+        Just info -> void . forward $ body info
 
 response :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
 response = do
-    status <- vertexPass . endpointParseKeep $ manyTill anyChar endOfLine
-    (hdrs, hb) <- endpointParseKeep headers
+    status <- forward $ manyTill anyChar endOfLine
+    (hdrs, hb) <- await' headers
     case imageType hdrs of
-        Nothing -> vertexSendBuilder hb >> vertexCopy
+        Nothing -> yield hb >> proxy
         Just ityp -> do
-            vertexSendBuilder . buildHeaders $
+            yield . buildHeaders $
                 removeHeaders ["Transfer-Encoding", "Content-Length"] hdrs
                     ++ [("Transfer-Encoding", "chunked")] 
-            b <- endpointParse $ case bodyInfo hdrs of
+            b <- await $ case bodyInfo hdrs of
                     Nothing -> foldMap word8 <$> manyTill anyWord8 endOfInput
                     Just info -> body info
             case flipImage ityp (L.toStrict (toLazyByteString b)) of
-                Left err -> endpointThrow err
-                Right b' -> vertexSendBuilder $ buildChunks b'
+                Left err -> raise err
+                Right b' -> yield $ buildChunks b'
 
 
 data BodyInfo = Length Int | Chunked deriving Show
@@ -134,7 +134,7 @@ imageType = lookup "Content-Type" >=> f
 
 flipImage :: ImageType -> B.ByteString -> Either String L.ByteString
 flipImage JPG b = case decodeJpeg b of
-    (Right (ImageYCbCr8 img)) -> Right $ encodeJpeg $ flipVertically img
+    (Right (ImageYCbCr8 img)) -> Right . encodeJpeg $ flipVertically img
     Right _ -> Left "unrecognized jpeg contents"
     Left err -> Left err
 flipImage PNG b = case decodePng b of

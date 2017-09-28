@@ -8,7 +8,7 @@ module Mal.Middle.TCP
     , fromTCPProxyCtx
     ) where
 
-import Mal.Monad
+import Mal.Monad hiding (recv)
 
 import Control.Concurrent
 import Control.Monad

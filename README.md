@@ -15,13 +15,13 @@ At the core of Malice lie four Monad transformers:
 - `MalT`
 
 ```
-MonadEve      ==implies=> MonadMal
+MonadEve       ==implies=>  MonadMal
 
-   ^                         ^
- hoistFrom                 hoistFromTo
-   |                         |
+   ^                           ^
+ hoistFrom                   hoistFromTo
+   |                           |
 
-MonadEndpoint ==implies=> MonadVertex
+MonadEndpoint  ==implies=>  MonadVertex
 ```
 
 *More documentation coming soon.*
