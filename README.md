@@ -11,12 +11,13 @@ Malice is inspired by [Mallory](https://github.com/CarveSystems/mallory) and [mi
 
 At the core of Malice lie four monad transformers:
 
-#### `EndpointT`
+- `EndpointT`
+- `VertexT`
+- `EveT`
+- `MalT`
 
 `EndpointT` provides a buffered interface to a stream endpoint (e.g. `recv` on a socket) suitable for use with Haskell's great parser combinator and serialization libraries such as [attoparsec](https://hackage.haskell.org/package/attoparsec) and [cereal](https://hackage.haskell.org/package/cereal-0.5.4.0).
 It also provides a means of throwing and catching pure protocol-related exceptions.
-
-#### `VertexT`
 
 `VertexT` extends `EndpointT` with a stream origination point (e.g. `send` on a socket).
 It can serve as an abstraction for Alice (a node for bidirectional communication, such as a client or a server), or for Mallory in one direction (a node that modifies a unidirectional stream).
@@ -32,10 +33,8 @@ These two uses are depicted below:
 ^   v      v
 ```
 
-#### `EveT`
-
 `EveT` is just like `EndpointT`, except it provides buffered interfaces for two stream endpoints.
-This is an abstraction for a passive man in the middle, and is depicted below.
+This is an abstraction for a passive man in the middle:
 
 ```
       Bob
@@ -54,11 +53,9 @@ Alice
 Give a specific side of the communication that an `EveT` action sits between (Alice or Bob), an `EndpointT` action can be hoisted into an `EveT` action.
 Here, the `o`'s represent effective `EndpointT` contexts.
 
-#### `MalT`
-
 `MalT` (Mal is short for Mallory) extends `EveT` with two stream origination points.
 `MalT` is to `EveT` as `VertexT` is to `EndpointT`, and `MalT` is to `VertexT` as `EveT` is to `EndpointT`.
-Like `VertexT`, `MalT` can be viewed in two different ways.
+Like `VertexT`, `MalT` can be viewed in two different ways:
 
 ```
       Bob        Bob
