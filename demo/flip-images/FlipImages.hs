@@ -50,9 +50,9 @@ request = do
 response :: (MonadIO m, MonadLogger m, MonadVertex String m) => m ()
 response = do
     status <- vertexPass . endpointParseKeep $ manyTill anyChar endOfLine
-    (hdrs, hbs) <- endpointParseKeep headers
+    (hdrs, hb) <- endpointParseKeep headers
     case imageType hdrs of
-        Nothing -> vertexSendBuilder hbs >> vertexCopy
+        Nothing -> vertexSendBuilder hb >> vertexCopy
         Just ityp -> do
             vertexSendBuilder . buildHeaders $
                 removeHeaders ["Transfer-Encoding", "Content-Length"] hdrs
@@ -90,53 +90,54 @@ body Chunked = go mempty
 buildHeaders :: [Header] -> Builder
 buildHeaders hs = foldMap f hs <> newline
   where
-    f (k, v) = byteString (original k)
-        <> byteString ": "
-        <> byteString v
-        <> newline
+    f (k, v) = byteString (original k) <> ": " <> byteString v <> newline
 
 buildChunks :: L.ByteString -> Builder
-buildChunks bs =
-    if L.length bs == 0
-    then byteString "0\r\n\r\n"
+buildChunks b =
+    if L.null b
+    then "0" <> newline <> newline
     else wordHex (fromIntegral n)
         <> newline
         <> lazyByteString x
         <> newline
         <> buildChunks y
   where
-    n = min 0x2000 (L.length bs)
-    (x, y) = L.splitAt n bs
+    n = min 0x2000 (L.length b)
+    (x, y) = L.splitAt n b
 
 newline :: Builder
-newline = byteString "\r\n"
+newline = "\r\n"
 
 
 removeHeaders :: [HeaderName] -> [Header] -> [Header]
-removeHeaders = filter . flip fmap fst . fmap and .  traverse (/=)
+removeHeaders = filter . (. fst) . (and .) .  traverse (/=)
 
 bodyInfo :: [Header] -> Maybe BodyInfo
 bodyInfo = asum . map f
   where
     f (k, v)
-        | k == "Transfer-Encoding" = if v == "chunked" then Just Chunked else Nothing
-        | k == "Content-Length" = either (const Nothing) (Just . Length) $ parseOnly decimal v
+        | k == "Transfer-Encoding" = if v == "chunked"
+            then Just Chunked
+            else Nothing
+        | k == "Content-Length" = case parseOnly decimal v of
+            Left _ -> Nothing
+            Right n -> Just (Length n)
         | otherwise = Nothing
 
 imageType :: [Header] -> Maybe ImageType
-imageType = (>=>) (lookup "Content-Type") $ (<|>)
-    <$> (f JPG <$> (==) "image/jpeg")
-    <*> (f PNG <$> (==) "image/png")
+imageType = lookup "Content-Type" >=> f
   where
-    f x = bool Nothing (Just x)
+    f v | v == "image/jpeg" = Just JPG
+        | v == "image/png"  = Just PNG
+        | otherwise         = Nothing
 
 
 flipImage :: ImageType -> B.ByteString -> Either String L.ByteString
-flipImage JPG bs = case decodeJpeg bs of
+flipImage JPG b = case decodeJpeg b of
     (Right (ImageYCbCr8 img)) -> Right $ encodeJpeg $ flipVertically img
     Right _ -> Left "unrecognized jpeg contents"
     Left err -> Left err
-flipImage PNG bs = case decodePng bs of
+flipImage PNG b = case decodePng b of
     Right dimg -> encodeDynamicPng $ flipDynamic dimg
     Left err -> Left err
 

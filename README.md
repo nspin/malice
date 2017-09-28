@@ -1,17 +1,32 @@
 Malice
 ======
 
-Malice is a library and tool for rapid prototyping on behalf of Eve and Mallory, inspired by [mallory](https://github.com/intrepidusgroup/mallory).
+Malice is a Haskell library that provides abstractions and protocol-specific attacks for intercepting and modifying network traffic. It leverages the power of Haskell's type system to define an embedded DSL for describing the actions of Eve and Mallory. In effect, it allows a man or woman in the middle to write code that is as close to pure evil as possible.
 
-It leverages the power of Haskell's type system to provide abstractions for inspecting and modifying bidirectional streams over a network.
-In other words, Malice allows a man or woman in the middle to write code that is as close to pure evil as possible.
+Malice is inspired by [mallory](https://github.com/CarveSystems/mallory) and [mitmproxy](https://github.com/mitmproxy/mitmproxy).
 
-Malice also will eventually also provide implementations of MITM attacks on a variety of protocols.
-All that's been implemented so far is TLS splitting.
+## How It Works
+
+At the core of Malice lie four Monad transformers:
+
+- `EndpointT`
+- `VertexT`
+- `EveT`
+- `MalT`
+
+```
+MonadEve      ==implies=> MonadMal
+
+   ^                         ^
+ hoistFrom                 hoistFromTo
+   |                         |
+
+MonadEndpoint ==implies=> MonadVertex
+```
 
 *More documentation coming soon.*
 
-### Demo
+## Demo
 
 `./demo` contains a simple example program called `flip-images`, which flips JPEG's and PNG's passing through HTTP and HTTPS.
 It demonstrates the ease with which one can modify structured streams using Malice, and some basic ways to situate Malice between Alice and Bob.
