@@ -35,9 +35,9 @@ flipImages = do
     hoistFromTo Bob Alice response
 
 -- Modify the request from Alice to Bob to make sure that the response is easy
--- to mess with, because we are lazy. In real life, this would compromise
--- Mallory's position. In particular, we make sure the response is not
--- compressed and that the connection is only used for one request.
+-- to mess with, because we are lazy. In particular, we make sure the response
+-- is not compressed and that the connection is only used for one request. In
+-- real life, this would compromise Mallory's position.
 request :: MonadVertex String m => m ()
 request = do
     -- Pass along request line
@@ -80,13 +80,13 @@ response = do
 
 data BodyInfo = Length Int | Chunked deriving Show
 
-data ImageType = JPG | PNG deriving Show
+data ImageType = PNG | JPEG deriving Show
 
 
 headers :: Parser [Header]
 headers = manyTill header endOfLine
   where
-    header = f <$> manyTill anyWord8 (string ": ") <*> manyTill anyWord8 endOfLine
+    header = f <$> manyTill anyWord8 ": " <*> manyTill anyWord8 endOfLine
     f k v = (mk (B.pack k), B.pack v)
 
 body :: BodyInfo -> Parser Builder
@@ -140,18 +140,18 @@ bodyInfo = asum . map f
 imageType :: [Header] -> Maybe ImageType
 imageType = lookup "Content-Type" >=> f
   where
-    f v | v == "image/jpeg" = Just JPG
-        | v == "image/png" = Just PNG
+    f v | v == "image/png" = Just PNG
+        | v == "image/jpeg" = Just JPEG
         | otherwise = Nothing
 
 
 flipImage :: ImageType -> B.ByteString -> Either String L.ByteString
-flipImage JPG b = case decodeJpeg b of
-    (Right (ImageYCbCr8 img)) -> Right . encodeJpeg $ flipVertically img
-    Right _ -> Left "unrecognized jpeg contents"
-    Left err -> Left err
 flipImage PNG b = case decodePng b of
-    Right dimg -> encodeDynamicPng $ flipDynamic dimg
+    Right dimg -> encodeDynamicPng (flipDynamic dimg)
+    Left err -> Left err
+flipImage JPEG b = case decodeJpeg b of
+    Right (ImageYCbCr8 img) -> Right (encodeJpeg (flipVertically img))
+    Right _ -> Left "unrecognized jpeg contents"
     Left err -> Left err
 
 flipDynamic :: DynamicImage -> DynamicImage
