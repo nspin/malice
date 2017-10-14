@@ -53,10 +53,12 @@ library
                     , attoparsec
                     , base16-bytestring
                     , bytestring
+                    , case-insensitive
                     , cereal >= 0.4
                     , cryptonite >= 0.21
                     , data-default-class
                     , exceptions
+                    , http-types
                     , lens
                     , memory >= 0.14.6
                     , monad-logger
@@ -71,8 +73,6 @@ library
                     , x509 >= 1.6.5
                     , x509-store >= 1.6
                     , x509-validation >= 1.6.5
-                    , http-types
-                    , case-insensitive
 
 
 executable new-root
@@ -130,14 +130,15 @@ executable test-https-spy
   ghc-options:        -threaded
   build-depends:      base >=4.8 && <5
                     , malice
-                    , exceptions
                     , async >= 2.0
                     , attoparsec
                     , base16-bytestring
                     , bytestring
                     , case-insensitive
                     , cryptonite >= 0.21
+                    , exceptions
                     , http-types
+                    , lens
                     , monad-logger
                     , monad-unlift
                     , mtl

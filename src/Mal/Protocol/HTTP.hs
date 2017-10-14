@@ -68,7 +68,7 @@ requestBody (KnownLength len) f = go len
 requestBody ChunkedBody f = new
   where
     new = do
-        n <- await $ ((hexadecimal <* crlf) <?> "foo")
+        n <- await $ ((hexadecimal <* crlf) <?> "chunk size")
         unless (n == 0) (go n)
     go n = do
         mbs <- endpointPop

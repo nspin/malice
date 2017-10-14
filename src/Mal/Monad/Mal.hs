@@ -6,6 +6,7 @@ module Mal.Monad.Mal
     , Vertices(..)
     , vertexFrom
     , vertexFromTo
+    , endpointsOf
 
     , runMalT
     , runMalT'
@@ -17,6 +18,7 @@ import Mal.Monad.Mal.Internal
 import Mal.Monad.Eve
 import Mal.Monad.Vertex
 
+import Control.Lens
 import Control.Monad.Reader
 import qualified Data.ByteString.Lazy as L
 
@@ -32,6 +34,14 @@ vertexFrom Bob = vertexBob
 
 vertexFromTo :: Side -> Side -> Vertices m -> Vertex m
 vertexFromTo x y = Vertex <$> (edgeIn . vertexFrom x) <*> (edgeOut . vertexFrom y)
+
+endpointsOf :: Lens' (Vertices m) (Endpoints m)
+endpointsOf = lens f g
+  where
+    f (Vertices alice bob) = Endpoints (edgeIn alice) (edgeIn bob)
+    g (Vertices alice bob) (Endpoints al bo) = Vertices
+        (Vertex al (edgeOut alice))
+        (Vertex bo (edgeOut bob))
 
 
 runMalT :: Monad m => MalT e m a -> Vertices m -> Unconsumed -> m (Either e a, Unconsumed)

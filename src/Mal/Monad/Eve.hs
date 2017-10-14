@@ -46,10 +46,10 @@ runEveT m eps init = (fmap.fmap) fromBuffers $
         (toBuffers init)
 
 runEveT' :: Monad m => EveT e m a -> Endpoints m -> m (Either e a, Unconsumed)
-runEveT' m vs = runEveT m vs $ Unconsumed L.empty L.empty
+runEveT' m eps = runEveT m eps $ Unconsumed L.empty L.empty
 
 evalEveT :: Monad m => EveT e m a -> Endpoints m -> Unconsumed -> m (Either e a)
 evalEveT = (fmap.fmap.fmap.fmap) fst runEveT
 
 evalEveT' :: Monad m => EveT e m a -> Endpoints m -> m (Either e a)
-evalEveT' m vs = evalEveT m vs $ Unconsumed L.empty L.empty
+evalEveT' m eps = evalEveT m eps $ Unconsumed L.empty L.empty

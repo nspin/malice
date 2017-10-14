@@ -16,6 +16,7 @@ import Mal.Middle.Vertices
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Concurrent.Chan
+import Control.Lens (view)
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Catch
@@ -23,6 +24,7 @@ import Control.Monad.Logger
 import Control.Monad.Trans.Unlift
 import Crypto.PubKey.RSA
 import Crypto.Random
+import Data.Attoparsec.ByteString.Char8 hiding (option, Parser)
 import Data.Bool
 import qualified Data.ByteString as B
 import Data.Monoid
@@ -82,9 +84,9 @@ main = do
     go :: MVar PortNumber -> Vertices (LoggingT IO) -> LoggingT IO ()
     go pc vs = do
         port <- liftIO $ takeMVar pc
-        liftIO . putMVar pc $ port + 1
-        vs' <- loopback vs port
-        proxyBoth vs'
+        liftIO $ putMVar pc (port + 1)
+        eps <- loopback port (passive vs)
+        evalEveT' spy eps >>= either ($logError . pack) return
 
 spy :: (MonadEve String m, EveAll MonadLogger m) => m ()
 spy = do
@@ -95,23 +97,19 @@ spy = do
 request :: (MonadEndpoint String m, MonadLogger m) => m ()
 request = do
     rline <- await requestLine
-    $logInfoSH rline
     hdrs <- await headers
-    $logInfoSH hdrs
     case requestBodyLength hdrs of
         Nothing -> return () -- assume method doesn't allow request body
         Just info -> requestBody info f
   where
-    f bs = $logInfoSH bs
+    f bs = return ()
 
 response :: (MonadEndpoint String m, MonadLogger m) => m ()
 response = do
-    rline <- await statusLine
-    $logInfoSH rline
+    rline <- await (statusLine <?> "status line")
     hdrs <- await headers
-    $logInfoSH hdrs
     case requestBodyLength hdrs of
         Nothing -> return () -- assume method doesn't allow request body
         Just info -> requestBody info f
   where
-    f bs = $logInfoSH bs
+    f bs = return ()
