@@ -4,6 +4,9 @@ module Mal.Monad.Eve
     , HoistFrom(..)
     , EveT
     , runEveT
+    , runEveT'
+    , evalEveT
+    , evalEveT'
 
     , Endpoints(..)
     , endpointFrom
@@ -41,3 +44,12 @@ runEveT m eps init = (fmap.fmap) fromBuffers $
     runStateT
         (runExceptT (runReaderT (getEveT m) eps))
         (toBuffers init)
+
+runEveT' :: Monad m => EveT e m a -> Endpoints m -> m (Either e a, Unconsumed)
+runEveT' m vs = runEveT m vs $ Unconsumed L.empty L.empty
+
+evalEveT :: Monad m => EveT e m a -> Endpoints m -> Unconsumed -> m (Either e a)
+evalEveT = (fmap.fmap.fmap.fmap) fst runEveT
+
+evalEveT' :: Monad m => EveT e m a -> Endpoints m -> m (Either e a)
+evalEveT' m vs = evalEveT m vs $ Unconsumed L.empty L.empty
