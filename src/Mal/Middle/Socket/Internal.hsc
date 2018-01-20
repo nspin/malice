@@ -1,13 +1,9 @@
 #include <sys/socket.h>
-#include <linux/socket.h>
-#include <linux/netfilter_ipv4.h>
 
 module Mal.Middle.Socket.Internal
     ( recvBufWithFlags
 
-    , mSG_CMSG_CLOEXEC 
     , mSG_DONTWAIT 
-    , mSG_ERRQUEUE 
     , mSG_OOB 
     , mSG_PEEK 
     , mSG_TRUNC 
@@ -18,7 +14,6 @@ module Mal.Middle.Socket.Internal
 
     , getSockOptBuf
     , sOL_IP
-    , sO_ORIGINAL_DST
     ) where
 
 import Data.Word
@@ -44,14 +39,8 @@ recvBufWithFlags flags sock@(MkSocket fd _ _ _ _) ptr nbytes
         this = "Mal.Middle.Socket.Internal.recvBufWithFlags"
 
 
-mSG_CMSG_CLOEXEC :: Int
-mSG_CMSG_CLOEXEC = (#const MSG_CMSG_CLOEXEC)
-
 mSG_DONTWAIT :: Int
 mSG_DONTWAIT = (#const MSG_DONTWAIT)
-
-mSG_ERRQUEUE :: Int
-mSG_ERRQUEUE = (#const MSG_ERRQUEUE)
 
 mSG_OOB :: Int
 mSG_OOB = (#const MSG_OOB)
@@ -84,9 +73,6 @@ sOL_IP :: CInt
 sOL_IP = 0
 -- SOL_IP is in linux/
 -- sOL_IP = (#const SOL_IP)
-
-sO_ORIGINAL_DST :: CInt
-sO_ORIGINAL_DST = (#const SO_ORIGINAL_DST)
 
 
 mkInvalidArgError :: String -> IOError

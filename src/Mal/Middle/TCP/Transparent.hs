@@ -7,6 +7,7 @@ module Mal.Middle.TCP.Transparent
 
 import Mal.Middle.TCP
 import Mal.Middle.Socket
+import Mal.Middle.Socket.Linux
 import Mal.Extra.Binascii
 
 import Control.Concurrent
@@ -25,7 +26,6 @@ import Network.Socket hiding (recv, send)
 transparentProxyHandler :: (MonadIO m, MonadCatch m, MonadMask m, MonadLogger m, MonadBaseUnlift IO m)
     => (TCPProxyCtx -> m ()) -> Connection -> m ()
 transparentProxyHandler mitm (Connection client addr) = do
-    bs <- liftIO $ getSockOpt client sOL_IP sO_ORIGINAL_DST 20
     saddr <- uncurry SockAddrInet <$> liftIO (getOriginalDst client)
     server <- liftIO $ socket AF_INET Stream defaultProtocol
     liftIO $ connect server saddr

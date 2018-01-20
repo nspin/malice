@@ -151,7 +151,7 @@ instance HoistFrom m => HoistFrom (ExceptT e' m) where
     type InnerEndpoint (ExceptT e' m) = ExceptT e' (InnerEndpoint m)
     hoistFrom side = ExceptT . hoistFrom side . runExceptT
 
-instance HoistFrom m => HoistFrom (ReaderT t m) where
+instance HoistFrom m => HoistFrom (ReaderT r m) where
     type InnerEndpoint (ReaderT r m) = ReaderT r (InnerEndpoint m)
     hoistFrom side = ReaderT . fmap (hoistFrom side) . runReaderT
 

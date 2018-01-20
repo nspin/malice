@@ -9,7 +9,6 @@ import Mal.Protocol.TLS
 import Mal.Protocol.TLS.Hybrid
 import Mal.Protocol.HTTP
 import Mal.Middle.TCP
-import Mal.Middle.TCP.Transparent
 import Mal.Middle.Socks5
 import Mal.Middle.Vertices
 
@@ -38,20 +37,14 @@ import Options.Applicative
 
 
 data Opts = Opts
-    { transparent :: Bool
-    , port :: PortNumber
+    { port :: PortNumber
     , certPath :: String
     , privPath :: String
     }
 
 opts :: Parser Opts
 opts = Opts
-    <$> switch
-        (  long "transparent"
-        <> short 't'
-        <> help "Whether to run as a transparent TCP proxy using netfilter instead as a SOCKS5 proxy"
-        )
-    <*> option auto
+    <$> option auto
         (  long "port"
         <> short 'p'
         <> metavar "PORT"
@@ -76,17 +69,17 @@ main = do
     chan <- newChan
     forkIO . runStderrLoggingT . filterLogger (const (> LevelDebug)) $ unChanLoggingT chan
     portCount <- newMVar 13337
-    runChanLoggingT chan . tcpServer (SockAddrInet port 0) .
-        bool socks5Handler transparentProxyHandler transparent $
-            malMaybeTLS swapKey (go portCount . fromTCPProxyCtx) (go portCount . fromContexts)
+    let go :: Vertices (LoggingT IO) -> LoggingT IO ()
+        go vs = do
+            port <- liftIO $ takeMVar portCount
+            liftIO $ putMVar portCount (port + 1)
+            eps <- loopback port (passive vs)
+            evalEveT' spy eps >>= either ($logError . pack) return
+    runChanLoggingT chan . tcpServer (SockAddrInet port 0) . socks5Handler $
+        malMaybeTLS swapKey (go . fromTCPProxyCtx) (go . fromContexts)
   where
     ((_, myPriv), _) = withDRG (drgNewSeed (seedFromInteger 0)) (generate 256 3)
-    go :: MVar PortNumber -> Vertices (LoggingT IO) -> LoggingT IO ()
-    go pc vs = do
-        port <- liftIO $ takeMVar pc
-        liftIO $ putMVar pc (port + 1)
-        eps <- loopback port (passive vs)
-        evalEveT' spy eps >>= either ($logError . pack) return
+
 
 spy :: (MonadEve String m, EveAll MonadLogger m) => m ()
 spy = do

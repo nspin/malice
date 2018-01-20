@@ -148,7 +148,7 @@ instance HoistFromTo m => HoistFromTo (ExceptT e' m) where
     type InnerVertex (ExceptT e' m) = ExceptT e' (InnerVertex m)
     hoistFromTo sfrom sto = ExceptT . hoistFromTo sfrom sto . runExceptT
 
-instance HoistFromTo m => HoistFromTo (ReaderT t m) where
+instance HoistFromTo m => HoistFromTo (ReaderT r m) where
     type InnerVertex (ReaderT r m) = ReaderT r (InnerVertex m)
     hoistFromTo sfrom sto = ReaderT . fmap (hoistFromTo sfrom sto) . runReaderT
 

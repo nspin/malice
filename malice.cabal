@@ -38,12 +38,16 @@ library
                     , Mal.Middle.Socket
                     , Mal.Middle.Socket.Internal
                     , Mal.Middle.TCP
-                    , Mal.Middle.TCP.Transparent
                     , Mal.Middle.Socks5
                     , Mal.Middle.Vertices
  
                     , Mal.Extra.Binascii
 
+  if os(linux)
+    exposed-modules:
+                      Mal.Middle.Socket.Linux
+                    , Mal.Middle.Socket.Internal.Linux
+                    , Mal.Middle.TCP.Transparent
 
   build-depends:      base >=4.8 && <5
                     , array
