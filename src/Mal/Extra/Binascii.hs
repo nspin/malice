@@ -1,9 +1,13 @@
 module Mal.Extra.Binascii
     ( asHex
     , asNice
-    , unHex
+    , asOk
+
     , showHex
     , showNice
+    , showOk
+
+    , unHex
     , readHex
     ) where
 
@@ -14,9 +18,6 @@ import Data.List
 import Data.Word
 import qualified Data.ByteString as B
 
-
-asNice :: Word8 -> Char
-asNice b = let c = chr (fromIntegral b) in if isPrint c then c else '.'
 
 asHex :: Word8 -> String
 asHex b = [digits ! shiftR b 4, digits ! (b .&. 0x0f)]
@@ -30,9 +31,6 @@ unHex (x, y) = shiftL (fromIntegral a) 4 .|. (fromIntegral b)
     Just a = elemIndex x $ elems digits
     Just b = elemIndex y $ elems digits
 
-showNice :: B.ByteString -> String
-showNice = map asNice . B.unpack
-
 showHex :: B.ByteString -> String
 showHex = intercalate " " . map asHex . B.unpack
 
@@ -42,3 +40,19 @@ readHex = B.pack . map unHex . pairs . filter (not . isSpace)
 pairs :: [a] -> [(a, a)]
 pairs [] = []
 pairs (x:y:zs) = (x, y) : pairs zs
+
+
+maskWith :: (Char -> Bool) -> Word8 -> Char
+maskWith p b = let c = chr (fromIntegral b) in if p c then c else '.'
+
+asNice :: Word8 -> Char
+asNice = maskWith isPrint
+
+asOk :: Word8 -> Char
+asOk = maskWith $ \c -> isPrint c || elem c " \t\n\r"
+
+showNice :: B.ByteString -> String
+showNice = map asNice . B.unpack
+
+showOk :: B.ByteString -> String
+showOk = map asOk . B.unpack

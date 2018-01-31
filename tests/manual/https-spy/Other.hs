@@ -79,3 +79,5 @@ main = do
         malMaybeTLS swapKey (go . fromTCPProxyCtx) (go . fromContexts)
   where
     ((_, myPriv), _) = withDRG (drgNewSeed (seedFromInteger 0)) (generate 256 3)
+    -- go :: Vertices (LoggingT IO) -> LoggingT IO ()
+    -- go vs = evalEveT' spy (passive vs) >>= either ($logError . pack) return

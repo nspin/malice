@@ -1,7 +1,8 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
 module Mal.Protocol.TLS
@@ -45,6 +46,13 @@ data Contexts = Contexts
     { clientCtx :: Context
     , serverCtx :: Context
     }
+
+
+fromContexts :: MonadIO m => Contexts -> Vertices m
+fromContexts (Contexts client server) = Vertices
+    (Vertex (recvData client) (sendData client . L.fromStrict))
+    (Vertex (recvData server) (sendData server . L.fromStrict))
+
 
 malTLS :: (MonadIO m, MonadLogger m, MonadBaseUnlift IO m)
        => KeySwapper
@@ -135,6 +143,15 @@ makeKeySwapper rootCert rootPriv myPriv (CertificateChain (signedOldCert:_)) = (
     --           , extensionEncode False $ ExtAuthorityKeyId kh
     --           ]
 
+stripExts :: Extensions -> Extensions
+stripExts (Extensions mexts) = Extensions $ do
+    exts <- mexts
+    case filter p exts of
+        [] -> Nothing
+        exts' -> Just exts'
+  where
+    p ext = not $ isAKID ext || isSKID ext || isCrlDistPts ext || isAuthInfoAccess ext
+
 
 isAKID :: ExtensionRaw -> Bool
 isAKID raw = case extensionDecode raw of
@@ -146,8 +163,22 @@ isSKID raw = case extensionDecode raw of
     Nothing -> False
     Just (Right (_ :: ExtSubjectKeyId)) -> True
 
+isCrlDistPts :: ExtensionRaw -> Bool
+isCrlDistPts raw = case extensionDecode raw of
+    Nothing -> False
+    Just (Right (_ :: ExtCrlDistributionPoints)) -> True
 
-fromContexts :: MonadIO m => Contexts -> Vertices m
-fromContexts (Contexts client server) = Vertices
-    (Vertex (recvData client) (sendData client . L.fromStrict))
-    (Vertex (recvData server) (sendData server . L.fromStrict))
+isAuthInfoAccess :: ExtensionRaw -> Bool
+isAuthInfoAccess raw = case extensionDecode raw of
+    Nothing -> False
+    Just (Right (_ :: ExtAuthorityInformationAccess)) -> True
+
+
+data ExtAuthorityInformationAccess = ExtAuthorityInformationAccess () -- todo
+    deriving (Show, Eq)
+
+instance Extension ExtAuthorityInformationAccess where
+    extOID _ = [1, 3, 6, 1, 5, 5, 7, 1, 1]
+    extHasNestedASN1 = const True
+    extEncode = error "extEncode ExtAuthorityInformationAccess unimplemented"
+    extDecode = error "extDecode ExtAuthorityInformationAccess unimplemented"
