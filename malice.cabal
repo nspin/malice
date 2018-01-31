@@ -98,11 +98,16 @@ executable new-root
 
 
 executable flip-images
-  hs-source-dirs:     demo/flip-images
-  main-is:            Main.hs
   default-language:   Haskell2010
   default-extensions: OverloadedStrings
   ghc-options:        -threaded
+  hs-source-dirs:     demo/flip-images
+
+  if os(linux)
+    main-is:          Linux.hs
+  else
+    main-is:          Other.hs
+
   build-depends:      base >=4.8 && <5
                     , malice
                     , async >= 2.0
@@ -127,11 +132,19 @@ executable flip-images
 
 
 executable test-https-spy
-  hs-source-dirs:     tests/manual/https-spy
-  main-is:            Main.hs
   default-language:   Haskell2010
   default-extensions: OverloadedStrings
   ghc-options:        -threaded
+
+  hs-source-dirs:     tests/manual/https-spy
+
+  if os(linux)
+    main-is:          Linux.hs
+  else
+    main-is:          Other.hs
+
+  other-modules:      Spy
+
   build-depends:      base >=4.8 && <5
                     , malice
                     , async >= 2.0

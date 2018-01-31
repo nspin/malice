@@ -4,13 +4,14 @@
 
 module Main (main) where
 
+import Spy
+
+import Mal.Middle.Socks5
+import Mal.Middle.TCP
+import Mal.Middle.Vertices
 import Mal.Monad
 import Mal.Protocol.TLS
 import Mal.Protocol.TLS.Hybrid
-import Mal.Protocol.HTTP
-import Mal.Middle.TCP
-import Mal.Middle.Socks5
-import Mal.Middle.Vertices
 
 import Control.Concurrent
 import Control.Concurrent.Async
@@ -23,7 +24,6 @@ import Control.Monad.Logger
 import Control.Monad.Trans.Unlift
 import Crypto.PubKey.RSA
 import Crypto.Random
-import Data.Attoparsec.ByteString.Char8 hiding (option, Parser)
 import Data.Bool
 import qualified Data.ByteString as B
 import Data.Monoid
@@ -79,30 +79,3 @@ main = do
         malMaybeTLS swapKey (go . fromTCPProxyCtx) (go . fromContexts)
   where
     ((_, myPriv), _) = withDRG (drgNewSeed (seedFromInteger 0)) (generate 256 3)
-
-
-spy :: (MonadEve String m, EveAll MonadLogger m) => m ()
-spy = do
-    hoistFrom Alice request
-    hoistFrom Bob response
-    spy
-
-request :: (MonadEndpoint String m, MonadLogger m) => m ()
-request = do
-    rline <- await requestLine
-    hdrs <- await headers
-    case requestBodyLength hdrs of
-        Nothing -> return () -- assume method doesn't allow request body
-        Just info -> requestBody info f
-  where
-    f bs = return ()
-
-response :: (MonadEndpoint String m, MonadLogger m) => m ()
-response = do
-    rline <- await (statusLine <?> "status line")
-    hdrs <- await headers
-    case requestBodyLength hdrs of
-        Nothing -> return () -- assume method doesn't allow request body
-        Just info -> requestBody info f
-  where
-    f bs = return ()

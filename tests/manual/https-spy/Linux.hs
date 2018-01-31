@@ -1,49 +1,52 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Main (main) where
 
-import FlipImages
+import Spy
 
+import Mal.Middle.Socks5
+import Mal.Middle.TCP
+import Mal.Middle.TCP.Transparent
+import Mal.Middle.Vertices
 import Mal.Monad
 import Mal.Protocol.TLS
 import Mal.Protocol.TLS.Hybrid
-import Mal.Middle.TCP
-import Mal.Middle.TCP.Transparent
-import Mal.Middle.Socks5
 
 import Control.Concurrent
+import Control.Concurrent.Async
 import Control.Concurrent.Chan
+import Control.Lens (view)
 import Control.Monad
 import Control.Monad.Except
+import Control.Monad.Catch
 import Control.Monad.Logger
+import Control.Monad.Trans.Unlift
 import Crypto.PubKey.RSA
 import Crypto.Random
 import Data.Bool
+import qualified Data.ByteString as B
 import Data.Monoid
 import Data.Text (pack)
 import Data.X509
 import Data.X509.File
 import Network.Socket hiding (recv, send)
+import Network.Socket.ByteString
 import Network.TLS hiding (SHA256, HashSHA256)
 import Options.Applicative
 
 
 data Opts = Opts
-    { transparent :: Bool
-    , port :: PortNumber
+    { port :: PortNumber
     , certPath :: String
     , privPath :: String
+    , transparent :: Bool
     }
 
 opts :: Parser Opts
 opts = Opts
-    <$> switch
-        (  long "transparent"
-        <> short 't'
-        <> help "Whether to run as a transparent TCP proxy using netfilter instead as a SOCKS5 proxy"
-        )
-    <*> option auto
+    <$> option auto
         (  long "port"
         <> short 'p'
         <> metavar "PORT"
@@ -53,10 +56,15 @@ opts = Opts
         )
     <*> argument str (metavar "CERT" <> help "Input path for root certificate")
     <*> argument str (metavar "PRIV" <> help "Input path for root key")
+    <*> switch
+        (  long "transparent"
+        <> short 't'
+        <> help "Whether to run as a transparent TCP proxy using netfilter instead as a SOCKS5 proxy"
+        )
 
 parser = info (opts <**> helper)
     (  fullDesc
-    <> progDesc "Flip images passing through HTTP and HTTPS like a real hacker."
+    <> progDesc "Spy on and log HTTPS session."
     )
 
 main :: IO ()
@@ -67,10 +75,15 @@ main = do
     let swapKey = makeKeySwapper (signedObject (getSigned rootSigned)) rootPriv myPriv
     chan <- newChan
     forkIO . runStderrLoggingT . filterLogger (const (> LevelDebug)) $ unChanLoggingT chan
+    portCount <- newMVar 13337
+    let go :: Vertices (LoggingT IO) -> LoggingT IO ()
+        go vs = do
+            port <- liftIO $ takeMVar portCount
+            liftIO $ putMVar portCount (port + 1)
+            eps <- loopback port (passive vs)
+            evalEveT' spy eps >>= either ($logError . pack) return
     runChanLoggingT chan . tcpServer (SockAddrInet port 0) .
         bool socks5Handler transparentProxyHandler transparent $
-            malMaybeTLS swapKey (go . fromTCPProxyCtx) (go . fromContexts)
+            malMaybeTLS swapKey (go portCount . fromTCPProxyCtx) (go portCount . fromContexts)
   where
     ((_, myPriv), _) = withDRG (drgNewSeed (seedFromInteger 0)) (generate 256 3)
-    go :: Vertices (LoggingT IO) -> LoggingT IO ()
-    go = evalMalT' flipImages >=> either ($logError . pack) return
