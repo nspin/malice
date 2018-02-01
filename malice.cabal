@@ -89,6 +89,7 @@ executable new-root
                     , bytestring
                     , cryptonite >= 0.21
                     , hourglass
+                    , memory >= 0.14.6
                     , optparse-applicative
                     , pem
                     , tls

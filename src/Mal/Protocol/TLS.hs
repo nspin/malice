@@ -21,9 +21,14 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Logger
 import Control.Monad.Trans.Unlift
-import Crypto.Hash.Algorithms
+import Crypto.Hash hiding (Context)
 import Crypto.PubKey.RSA
 import Crypto.PubKey.RSA.PKCS15
+import Data.ASN1.BinaryEncoding
+import Data.ASN1.Encoding
+import Data.ASN1.Types
+import Data.Bits
+import qualified Data.ByteArray as A
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
@@ -130,18 +135,19 @@ makeKeySwapper rootCert rootPriv myPriv (CertificateChain (signedOldCert:_)) = (
     sigAlg = SignatureALG HashSHA256 PubKeyALG_RSA
     newCert = oldCert
         { certVersion = 3
-        , certSerial = certSerial oldCert + 1
+        -- , certSerial = certSerial oldCert + 1
+        , certSerial = uniqueSerialNumber myPriv signedOldCert
         , certSignatureAlg = sigAlg
         , certIssuerDN = certSubjectDN rootCert
         , certPubKey = PubKeyRSA $ private_pub myPriv
-        , certExtensions = Extensions $ Just newExts
+        , certExtensions = stripExts (certExtensions oldCert)
         }
-    Extensions oldExts = certExtensions oldCert
-    newExts = filter (not <$> ((||) <$> isAKID <*> isSKID)) $ fromMaybe [] oldExts
-    -- newExts = [ extensionEncode False $ ExtKeyUsage [ KeyUsage_keyCertSign ]
-    --           , extensionEncode False $ ExtSubjectKeyId kh
-    --           , extensionEncode False $ ExtAuthorityKeyId kh
-    --           ]
+
+uniqueSerialNumber :: Crypto.PubKey.RSA.PrivateKey -> SignedExact Certificate -> Integer
+uniqueSerialNumber priv signed = foldl f 0 . take 10 . A.unpack . hashWith SHA256 $
+    encodeASN1' DER (toASN1 priv []) <> getSignedData signed
+  where
+    f acc b = shiftL acc 8 .|. (toInteger b)
 
 stripExts :: Extensions -> Extensions
 stripExts (Extensions mexts) = Extensions $ do
@@ -150,31 +156,17 @@ stripExts (Extensions mexts) = Extensions $ do
         [] -> Nothing
         exts' -> Just exts'
   where
-    p ext = not $ isAKID ext || isSKID ext || isCrlDistPts ext || isAuthInfoAccess ext
+    p ext = not $ extRawOID ext `elem`
+        [ extOID (undefined :: ExtAuthorityKeyId)
+        , extOID (undefined :: ExtSubjectKeyId)
+        , extOID (undefined :: ExtCrlDistributionPoints)
+        , extOID (undefined :: ExtAuthorityInformationAccess)
+        ]
 
 
-isAKID :: ExtensionRaw -> Bool
-isAKID raw = case extensionDecode raw of
-    Nothing -> False
-    Just (Right (_ :: ExtAuthorityKeyId)) -> True
+-- TODO(nspin) complete and push upstream
 
-isSKID :: ExtensionRaw -> Bool
-isSKID raw = case extensionDecode raw of
-    Nothing -> False
-    Just (Right (_ :: ExtSubjectKeyId)) -> True
-
-isCrlDistPts :: ExtensionRaw -> Bool
-isCrlDistPts raw = case extensionDecode raw of
-    Nothing -> False
-    Just (Right (_ :: ExtCrlDistributionPoints)) -> True
-
-isAuthInfoAccess :: ExtensionRaw -> Bool
-isAuthInfoAccess raw = case extensionDecode raw of
-    Nothing -> False
-    Just (Right (_ :: ExtAuthorityInformationAccess)) -> True
-
-
-data ExtAuthorityInformationAccess = ExtAuthorityInformationAccess () -- todo
+data ExtAuthorityInformationAccess = ExtAuthorityInformationAccess -- TODO
     deriving (Show, Eq)
 
 instance Extension ExtAuthorityInformationAccess where
@@ -182,3 +174,61 @@ instance Extension ExtAuthorityInformationAccess where
     extHasNestedASN1 = const True
     extEncode = error "extEncode ExtAuthorityInformationAccess unimplemented"
     extDecode = error "extDecode ExtAuthorityInformationAccess unimplemented"
+
+
+-- not sure why this didn't make it into cryptonite:
+--  https://hackage.haskell.org/package/crypto-pubkey-types-0.4.3/docs/Crypto-Types-PubKey-RSA.html
+--  https://hackage.haskell.org/package/cryptonite-0.24/docs/Crypto-PubKey-RSA-Types.html
+instance ASN1Object PrivateKey where
+    toASN1 privKey = \xs -> Start Sequence
+                          : IntVal 0
+                          : IntVal (public_n $ private_pub privKey)
+                          : IntVal (public_e $ private_pub privKey)
+                          : IntVal (private_d privKey)
+                          : IntVal (private_p privKey)
+                          : IntVal (private_q privKey)
+                          : IntVal (private_dP privKey)
+                          : IntVal (private_dQ privKey)
+                          : IntVal (fromIntegral $ private_qinv privKey)
+                          : End Sequence
+                          : xs
+    fromASN1 (Start Sequence
+             : IntVal 0
+             : IntVal n
+             : IntVal e
+             : IntVal d
+             : IntVal p1
+             : IntVal p2
+             : IntVal pexp1
+             : IntVal pexp2
+             : IntVal pcoef
+             : End Sequence
+             : xs) = Right (privKey, xs)
+        where calculate_modulus n i = if (2 ^ (i * 8)) > n then i else calculate_modulus n (i+1)
+              privKey = PrivateKey
+                        { private_pub  = PublicKey { public_size = calculate_modulus n 1
+                                                   , public_n    = n
+                                                   , public_e    = e
+                                                   }
+                        , private_d    = d
+                        , private_p    = p1
+                        , private_q    = p2
+                        , private_dP   = pexp1
+                        , private_dQ   = pexp2
+                        , private_qinv = pcoef
+                        }
+
+    fromASN1 ( Start Sequence
+             : IntVal 0
+             : Start Sequence
+             : OID [1, 2, 840, 113549, 1, 1, 1]
+             : Null
+             : End Sequence
+             : OctetString bs
+             : xs
+             ) = let inner = either strError fromASN1 $ decodeASN1' BER bs
+                     strError = Left .
+                                ("fromASN1: RSA.PrivateKey: " ++) . show
+                 in either Left (\(k, _) -> Right (k, xs)) inner
+    fromASN1 _ =
+        Left "fromASN1: RSA.PrivateKey: unexpected format"

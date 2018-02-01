@@ -2,13 +2,14 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 
-import Crypto.Hash.Algorithms
+import Crypto.Hash
 import Crypto.PubKey.RSA
 import Crypto.PubKey.RSA.PKCS15
 import Crypto.Random
 import Data.ASN1.BinaryEncoding
 import Data.ASN1.Encoding
 import Data.ASN1.Types
+import qualified Data.ByteArray as A
 import qualified Data.ByteString as B
 import Data.Monoid
 import Data.PEM
@@ -51,7 +52,7 @@ main = do
 
 
 keyHash :: PublicKey -> B.ByteString
-keyHash pub = encodeASN1' DER $ toASN1 (PubKeyRSA pub) []
+keyHash pub = B.pack . A.unpack . hashWith SHA256 . encodeASN1' DER $ toASN1 (PubKeyRSA pub) []
 
 
 getSubjectKeyId :: Certificate -> Maybe B.ByteString
