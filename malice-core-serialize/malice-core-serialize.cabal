@@ -13,8 +13,6 @@ library
   default-language:   Haskell2010
 
   exposed-modules:    Mal.Monad.Serialize
-                    , Mal.Monad.Endpoint.Serialize
-                    , Mal.Monad.Vertex.Serialize
 
   build-depends:      base >=4.8 && <5
                     , malice-core

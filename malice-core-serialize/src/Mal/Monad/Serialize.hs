@@ -1,7 +1,49 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Mal.Monad.Serialize
-    ( module Mal.Monad.Endpoint.Serialize
-    , module Mal.Monad.Vertex.Serialize
+    ( awaitGet
+    , yieldPut
     ) where
 
-import Mal.Monad.Endpoint.Serialize
-import Mal.Monad.Vertex.Serialize
+import Mal.Monad
+
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Writer
+import qualified Data.ByteString as B
+import Data.ByteString.Builder
+import Data.Functor
+import Data.Serialize
+
+awaitGet :: (MonadEndpoint String m, Serialize a) => m a
+awaitGet = await get
+
+instance Awaitable String Get where
+
+    await' = runWriterT . go . runGetPartial
+      where
+        consumed orig suffix = B.take (B.length orig - B.length suffix) orig
+        go f = do
+            b <- awaitChunk
+            let end i = tell (byteString (consumed b i)) >> lift (endpointPush i)
+            case f b of
+                Fail err i -> end i >> raise err
+                Done r   i -> end i $> r
+                Partial f' -> tell (byteString b) >> go f'
+
+    await = go . runGetPartial
+      where
+        go f = do
+            b <- awaitChunk
+            case f b of
+                Fail err i -> endpointPush i >> raise err
+                Done r   i -> endpointPush i $> r
+                Partial f' -> go f'
+
+yieldPut :: (MonadVertex e m, Serialize a) => a -> m ()
+yieldPut = yield . put
+
+instance Yieldable Put where
+    yieldWith f = yieldWith f . execPut
