@@ -1,0 +1,157 @@
+name:                 malice
+version:              0.1.0.0
+license:              MIT
+license-file:         LICENSE
+author:               Nick Spinale
+maintainer:           nick@nickspinale.com
+build-type:           Simple
+extra-source-files:   README.md
+cabal-version:        >=1.10
+
+library
+  hs-source-dirs:     src
+  default-language:   Haskell2010
+
+  exposed-modules:    Mal.Protocol.TLS
+                    , Mal.Protocol.TLS.Backend
+                    , Mal.Protocol.TLS.Hybrid
+                    , Mal.Protocol.HTTP
+
+                    , Mal.Middle.Pcap
+                    , Mal.Middle.Socket
+                    , Mal.Middle.Socket.Internal
+                    , Mal.Middle.TCP
+                    , Mal.Middle.Socks5
+                    , Mal.Middle.Vertices
+
+                    , Mal.MathFacts
+
+                    , Mal.Extra.Binascii
+
+  if os(linux)
+    exposed-modules:
+                      Mal.Middle.Socket.Linux
+                    , Mal.Middle.Socket.Internal.Linux
+                    , Mal.Middle.TCP.Transparent
+
+  build-depends:      base >=4.8 && <5
+                    , malice-core
+                    , malice-core-serialize
+                    , malice-core-attoparsec
+                    , array
+                    , asn1-encoding
+                    , asn1-types >= 0.2.0
+                    , async >= 2.0
+                    , attoparsec
+                    , base16-bytestring
+                    , bytestring
+                    , case-insensitive
+                    , cereal >= 0.4
+                    , cryptonite >= 0.21
+                    , data-default-class
+                    , exceptions
+                    , http-types
+                    , lens
+                    , memory >= 0.14.6
+                    , monad-logger
+                    , monad-unlift
+                    , mtl >= 2
+                    , network
+                    , pcap
+                    , socks
+                    , text
+                    , tls
+                    , transformers
+                    , x509 >= 1.6.5
+                    , x509-store >= 1.6
+                    , x509-validation >= 1.6.5
+
+
+executable new-root
+  hs-source-dirs:     scripts/new-root
+  main-is:            Main.hs
+  default-language:   Haskell2010
+
+  build-depends:      base >=4.8 && <5
+                    , asn1-encoding
+                    , asn1-types >= 0.2.0
+                    , bytestring
+                    , cryptonite >= 0.21
+                    , hourglass
+                    , memory >= 0.14.6
+                    , optparse-applicative
+                    , pem
+                    , tls
+                    , x509 >= 1.6.5
+
+
+executable flip-images
+  default-language:   Haskell2010
+  ghc-options:        -threaded
+  hs-source-dirs:     demo/flip-images
+
+  if os(linux)
+    main-is:          Linux.hs
+  else
+    main-is:          Other.hs
+
+  build-depends:      base >=4.8 && <5
+                    , malice
+                    , malice-core
+                    , malice-core-attoparsec
+                    , async >= 2.0
+                    , attoparsec
+                    , base16-bytestring
+                    , bytestring
+                    , case-insensitive
+                    , cryptonite >= 0.21
+                    , http-types
+                    , JuicyPixels
+                    , JuicyPixels-extra
+                    , monad-logger
+                    , monad-unlift
+                    , mtl
+                    , network
+                    , optparse-applicative
+                    , socks
+                    , text
+                    , tls
+                    , x509 >= 1.6.5
+                    , x509-store >= 1.6
+
+
+executable test-https-spy
+  default-language:   Haskell2010
+  ghc-options:        -threaded
+
+  hs-source-dirs:     tests/manual/https-spy
+
+  if os(linux)
+    main-is:          Linux.hs
+  else
+    main-is:          Other.hs
+
+  other-modules:      Spy
+
+  build-depends:      base >=4.8 && <5
+                    , malice
+                    , malice-core
+                    , async >= 2.0
+                    , attoparsec
+                    , base16-bytestring
+                    , bytestring
+                    , case-insensitive
+                    , cryptonite >= 0.21
+                    , exceptions
+                    , http-types
+                    , lens
+                    , monad-logger
+                    , monad-unlift
+                    , mtl
+                    , network
+                    , optparse-applicative
+                    , socks
+                    , text
+                    , tls
+                    , x509 >= 1.6.5
+                    , x509-store >= 1.6

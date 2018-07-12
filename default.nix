@@ -1,30 +1,14 @@
-{ mkDerivation, array, asn1-encoding, asn1-types, async, attoparsec
-, base, base16-bytestring, bytestring, case-insensitive, cereal
-, cryptonite, data-default-class, exceptions, hourglass, http-types
-, JuicyPixels, JuicyPixels-extra, lens, memory, monad-logger
-, monad-unlift, mtl, network, optparse-applicative, pcap, pem
-, socks, stdenv, text, tls, transformers, x509, x509-store
-, x509-validation
-}:
-mkDerivation {
-  pname = "malice";
-  version = "0.1.0.0";
-  src = ./.;
-  isLibrary = true;
-  isExecutable = true;
-  libraryHaskellDepends = [
-    array asn1-encoding asn1-types async attoparsec base
-    base16-bytestring bytestring case-insensitive cereal cryptonite
-    data-default-class exceptions http-types lens memory monad-logger
-    monad-unlift mtl network pcap socks text tls transformers x509
-    x509-store x509-validation
-  ];
-  executableHaskellDepends = [
-    asn1-encoding asn1-types async attoparsec base base16-bytestring
-    bytestring case-insensitive cryptonite exceptions hourglass
-    http-types JuicyPixels JuicyPixels-extra lens monad-logger
-    monad-unlift mtl network optparse-applicative pem socks text tls
-    x509 x509-store
-  ];
-  license = stdenv.lib.licenses.mit;
+{ haskellPackages }:
+
+rec {
+  malice-core = haskellPackages.callPackage ./malice-core {};
+  malice-core-serialize = haskellPackages.callPackage ./malice-core-serialize {
+    inherit malice-core;
+  };
+  malice-core-attoparsec = haskellPackages.callPackage ./malice-core-attoparsec {
+    inherit malice-core;
+  };
+  malice = haskellPackages.callPackage ./malice {
+    inherit malice-core malice-core-serialize malice-core-attoparsec;
+  };
 }
