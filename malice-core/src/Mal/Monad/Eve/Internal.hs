@@ -34,7 +34,6 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Catch
-import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT(..), liftCatch)
 import Control.Monad.Trans.List as List (ListT(..), liftCatch)
@@ -128,9 +127,6 @@ instance MonadThrow m => MonadThrow (EveT e m) where
 
 instance MonadCatch m => MonadCatch (EveT e m) where
     catch m c = EveT $ catch (getEveT m) (getEveT . c)
-
-instance MonadLogger m => MonadLogger (EveT e m) where
-    monadLoggerLog a b c d = lift $ monadLoggerLog a b c d
 
 
 -- HoistFrom mtl lifts --

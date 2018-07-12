@@ -24,7 +24,6 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Catch
-import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT, liftCatch)
 import Control.Monad.Trans.List as List (ListT, liftCatch)
@@ -92,9 +91,6 @@ instance MonadThrow m => MonadThrow (EndpointT e m) where
 
 instance MonadCatch m => MonadCatch (EndpointT e m) where
     catch m c = EndpointT $ catch (getEndpointT m) (getEndpointT . c)
-
-instance MonadLogger m => MonadLogger (EndpointT e m) where
-    monadLoggerLog a b c d = lift $ monadLoggerLog a b c d
 
 
 -- MonadEndpoint mtl lifts --

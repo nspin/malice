@@ -5,9 +5,10 @@ module Spy (spy) where
 
 import Prelude hiding (takeWhile)
 
-import Mal.Extra.Binascii
 import Mal.Monad
+import Mal.Monad.Instances.Logger
 import Mal.Protocol.HTTP
+import Mal.Extra.Binascii
 
 import Control.Applicative
 import Control.Monad

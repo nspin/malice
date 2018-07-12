@@ -29,4 +29,3 @@ library
                     , bytestring
                     , lens
                     , exceptions
-                    , monad-logger

@@ -38,6 +38,7 @@ library
                     , malice-core
                     , malice-core-serialize
                     , malice-core-attoparsec
+                    , malice-core-instances-logger
                     , array
                     , asn1-encoding
                     , asn1-types >= 0.2.0
@@ -136,6 +137,7 @@ executable test-https-spy
   build-depends:      base >=4.8 && <5
                     , malice
                     , malice-core
+                    , malice-core-instances-logger
                     , async >= 2.0
                     , attoparsec
                     , base16-bytestring

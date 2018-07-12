@@ -36,7 +36,6 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Catch
-import Control.Monad.Logger
 
 import Control.Monad.Trans.Identity as Identity (IdentityT(..), runIdentityT, mapIdentityT)
 import Control.Monad.Trans.List as List (ListT(..), runListT, mapListT)
@@ -133,9 +132,6 @@ instance MonadThrow m => MonadThrow (VertexT e m) where
 
 instance MonadCatch m => MonadCatch (VertexT e m) where
     catch m c = VertexT $ catch (getVertexT m) (getVertexT . c)
-
-instance MonadLogger m => MonadLogger (VertexT e m) where
-    monadLoggerLog a b c d = lift $ monadLoggerLog a b c d
 
 
 -- MonadVertex mtl lifts --

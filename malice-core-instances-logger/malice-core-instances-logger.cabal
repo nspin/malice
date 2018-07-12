@@ -1,0 +1,20 @@
+name:                 malice-core-instances-logger
+version:              0.1.0.0
+license:              MIT
+license-file:         LICENSE
+author:               Nick Spinale
+maintainer:           nick@nickspinale.com
+build-type:           Simple
+extra-source-files:   README.md
+cabal-version:        >=1.10
+
+library
+  hs-source-dirs:     src
+  default-language:   Haskell2010
+
+  exposed-modules:    Mal.Monad.Instances.Logger
+
+  build-depends:      base >=4.8 && <5
+                    , malice-core
+                    , transformers
+                    , monad-logger
