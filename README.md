@@ -1,7 +1,7 @@
 Malice
 ======
 
-Malice is a Haskell library that provides abstractions and protocol-specific attacks for intercepting and modifying network traffic. It leverages the power of Haskell's type system to define an embedded DSL for describing the actions of Eve and Mallory. In effect, it allows a man or woman in the middle to write code that is as close to pure evil as possible.
+Malice is a Haskell library that provides abstractions and protocol-specific attacks for intercepting and modifying network traffic. It leverages the power of Haskell's type system to define an embedded DSL for describing the actions of Eve and Mallory. In effect, it allows an actor in the middle to write code that is as close to pure evil as possible.
 
 Malice is inspired by [Mallory](https://github.com/CarveSystems/mallory) and [mitmproxy](https://github.com/mitmproxy/mitmproxy).
 
